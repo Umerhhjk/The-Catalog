@@ -1,3 +1,6 @@
+import os
+import time
+
 import psycopg2
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -7,22 +10,31 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 CORS(app)
 
+# Database configuration - reads from environment variables (Docker)
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'library_db',
-    'user': 'postgres',
-    'password': '1234',
-    'port': 5432
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'database': os.getenv('DB_NAME', 'library_db'),
+    'user': os.getenv('DB_USER', 'postgres'),
+    'password': os.getenv('DB_PASSWORD', '1234'),
+    'port': int(os.getenv('DB_PORT', 5432))
 }
 
 def get_db_connection():
-    """Create and return a database connection"""
-    try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        return conn
-    except Exception as e:
-        print(f"Database connection error: {e}")
-        return None
+    """Create and return a database connection with retry logic"""
+    max_retries = 5
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            return conn
+        except psycopg2.OperationalError as e:
+            if attempt < max_retries - 1:
+                print(f"Database connection attempt {attempt + 1} failed. Retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+            else:
+                print(f"Database connection error after {max_retries} attempts: {e}")
+                return None
 
 def init_db():
     """Initialize database with users table"""
@@ -170,11 +182,43 @@ def login():
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    conn = get_db_connection()
+    db_status = "connected" if conn else "disconnected"
+    if conn:
+        conn.close()
+    
     return jsonify({
         'status': 'healthy',
-        'message': 'Library Management System API is running'
+        'message': 'Library Management System API is running',
+        'database': db_status
     }), 200
 
+@app.route('/api/users', methods=['GET'])
+def get_all_users():
+    """Get all users (for testing only - remove in production!)"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'DB connection failed'}), 500
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT id, username, email, created_at FROM users')
+        users = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'count': len(users),
+            'users': users
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
+    print("Waiting for database to be ready...")
+    time.sleep(3)
     init_db()
+    
     app.run(debug=True, host='0.0.0.0', port=5000)
