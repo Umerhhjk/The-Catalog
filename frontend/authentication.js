@@ -64,7 +64,7 @@ async function handleLogin(e) {
     }
 }
 
-// SIGNUP HANDLER (real backend)
+// SIGNUP HANDLER (real backend with validation rules)
 async function handleSignup(e) {
     e.preventDefault();
 
@@ -75,13 +75,13 @@ async function handleSignup(e) {
     const confirmPassword = document.getElementById('confirmPassword')?.value.trim();
     const role = document.getElementById('role')?.value;
 
-    if (!username || !email || !password) {
-        showNotification('error', 'Validation Error', 'Please fill all required fields');
-        return;
-    }
-
-    if (password !== confirmPassword) {
-        showNotification('error', 'Password Mismatch', 'Passwords do not match');
+    // Validation rules (only on form submission)
+    const validation = validateSignupForm({
+        fullName, email, username, password, confirmPassword, role
+    });
+    
+    if (!validation.isValid) {
+        showNotification('error', 'Validation Error', validation.message);
         return;
     }
 
@@ -111,6 +111,87 @@ async function handleSignup(e) {
     } finally {
         setLoadingState(false);
     }
+}
+
+// VALIDATION FUNCTIONS (only used on form submission)
+function validatePassword(password) {
+    const requirements = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+        noSpaces: !/\s/.test(password)
+    };
+    
+    const score = Object.values(requirements).filter(Boolean).length;
+    return score >= 4; // Require at least 4 out of 6 criteria
+}
+
+function validateSignupForm(data) {
+    // Check required fields
+    if (!data.fullName) {
+        return { isValid: false, message: 'Full name is required' };
+    }
+    
+    if (!data.email) {
+        return { isValid: false, message: 'Email is required' };
+    }
+    
+    if (!data.username) {
+        return { isValid: false, message: 'Username is required' };
+    }
+    
+    if (!data.password) {
+        return { isValid: false, message: 'Password is required' };
+    }
+    
+    if (!data.confirmPassword) {
+        return { isValid: false, message: 'Please confirm your password' };
+    }
+    
+    if (!data.role) {
+        return { isValid: false, message: 'Please select account type' };
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+        return { isValid: false, message: 'Please enter a valid email address' };
+    }
+    
+    // Username validation (alphanumeric, 3-20 characters, no email patterns)
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    const emailPattern = /@.*\.(com|org|net|edu|gov|co|uk|ca|au|de|fr|it|es|nl|se|no|dk|fi|pl|cz|hu|ro|bg|hr|sk|si|lt|lv|ee|lu|mt|cy|ie|pt|gr|be|at|ch|li|is|ad|mc|sm|va)$/i;
+    
+    if (!usernameRegex.test(data.username)) {
+        return { isValid: false, message: 'Username must be 3-20 characters, letters, numbers, and underscores only' };
+    }
+    
+    if (emailPattern.test(data.username)) {
+        return { isValid: false, message: 'Username cannot contain email patterns.' };
+    }
+    
+    // Full name validation (no email patterns)
+    if (emailPattern.test(data.fullName)) {
+        return { isValid: false, message: 'Full name cannot contain email patterns' };
+    }
+    
+    if (!/^[a-zA-Z\s\-'\.]+$/.test(data.fullName)) {
+        return { isValid: false, message: 'Full name can only contain letters, spaces, hyphens, apostrophes, and periods' };
+    }
+    
+    // Password validation
+    if (!validatePassword(data.password)) {
+        return { isValid: false, message: 'Password must be stronger.' };
+    }
+    
+    // Password confirmation
+    if (data.password !== data.confirmPassword) {
+        return { isValid: false, message: 'Passwords do not match' };
+    }
+    
+    return { isValid: true };
 }
 
 // Custom Notification Popups
@@ -166,6 +247,7 @@ async function checkAPIHealth() {
         showNotification('error', 'Server Offline', 'Backend not reachable (check Flask).');
     }
 }
+
 
 // page Initialization
 document.addEventListener('DOMContentLoaded', () => {
