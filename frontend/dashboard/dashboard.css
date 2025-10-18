@@ -102,6 +102,22 @@ body {
 .progress-rail { height: 6px; background: #0f1a13; border-radius: 999px; overflow: hidden; border: 1px solid #153c2a; margin-bottom: 6px; }
 .progress-bar { height: 100%; width: 38%; background: linear-gradient(90deg, var(--accent), #39e07a); }
 
+.main {
+    grid-area: main;
+    overflow: auto;
+    padding: 0 18px 18px;  /* remove top padding, keep sides/bottom */
+    margin-top: 0;
+    transition: opacity .25s ease, transform .7s ease-in-out, width .7s ease-in-out;
+    scrollbar-width: none;       /* Firefox */
+    -ms-overflow-style: none;    /* IE/Edge */
+}
+
+.main::-webkit-scrollbar {
+    display: none;               /* Chrome, Safari */
+}
+
+
+
 /* Horizontal scroller */
 .carousel { display: grid; grid-auto-flow: column; grid-auto-columns: 176px; gap: 12px; overflow-x: auto; padding: 10px 2px 8px; scroll-snap-type: x mandatory; }
 .carousel::-webkit-scrollbar { height: 8px; }
@@ -160,3 +176,4 @@ body.mobile-open .topbar { position: sticky; top: 0; z-index: 7; }
 .modal-section { margin-bottom: 12px; }
 .modal-actions { display: flex; justify-content: flex-start; padding: 0 12px 12px; }
 .close-btn { background: transparent; border: 1px solid #2a3a40; color: #cbd5d1; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; cursor: pointer; }
+

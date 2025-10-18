@@ -51,7 +51,7 @@ async function handleLogin(e) {
             localStorage.setItem('currentUser', JSON.stringify(data.user));
 
             setTimeout(() => {
-                window.location.replace('dashboard.html');
+                window.location.replace('dashboard/dashboard.html');
             }, 1500);
         } else {
             showNotification('error', 'Login Failed', data.message || 'Invalid credentials');

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Book UI</title>
+  <link rel="stylesheet" href="bookdetails.css">
+</head>
+<body>
+
+  <div class="book-container">
+
+    <!-- Upper half -->
+    <div class="book-card" id="book-card">
+      <img id="book-img" class="book-cover" alt="Book Cover">
+
+      <div class="book-info">
+        <div class="book-title" id="book-name"></div>
+        <div class="book-author" id="book-author"></div>
+
+        <div class="rating" id="rating">
+          <span class="star" data-value="1">☆</span>
+          <span class="star" data-value="2">☆</span>
+          <span class="star" data-value="3">☆</span>
+          <span class="star" data-value="4">☆</span>
+          <span class="star" data-value="5">☆</span>
+        </div>
+
+        <div class="book-details">
+          <div><strong>Category:</strong> <span id="book-category"></span></div>
+          <div><strong>Genre:</strong> <span id="book-genre"></span></div>
+          <div><strong>Publisher:</strong> <span id="book-publisher"></span></div>
+          <div><strong>Published Date:</strong> <span id="book-publishdate"></span></div>
+          <div><strong>Language:</strong> <span id="book-language"></span></div>
+          <div><strong>Page Count:</strong> <span id="book-pagecount"></span></div>
+          <div><strong>Copies Available:</strong> <span id="book-copies"></span></div>
+          <div><strong>Rating:</strong> <span id="book-rating"></span></div>
+          <div><strong>Users Rated:</strong> <span id="book-usersrated"></span></div>
+          <div><strong>Rated:</strong> <span id="book-rated"></span></div>
+        </div>
+
+        <div class="button-row">
+          <button class="wishlist-button" id="wishlist-button">♡ Wishlist</button>
+          <button class="book-button" id="book-button">Book</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lower half: Description -->
+    <div class="book-description-box">
+      <div class="book-description" id="book-description">
+        <p id="description-text"></p>
+      </div>
+      <button id="toggle-description" class="show-more-btn">Show more</button>
+    </div>
+
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="bookdetails.js"></script>
+</body>
+</html>

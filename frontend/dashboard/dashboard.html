@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catalog — Dashboard (Frontend Only)</title>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="dashboard.css" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidecard">
+        <div class="section-title">Home</div>
+        <nav class="nav">
+          <a class="nav-item active" href="#"><span class="label"><i class="fa-solid fa-gauge-high"></i>Dashboard</span></a>
+          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-books"></i>All Books</span><span class="count">190</span></a>
+        </nav>
+        <div class="section-title">Libraries</div>
+        <nav class="nav">
+          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-book-open-reader"></i>Novels</span><span class="count">159</span></a>
+          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-microchip"></i>Technology</span><span class="count">10</span></a>
+          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-face-grin-beam"></i>Comics</span><span class="count">21</span></a>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="brand" style="padding:0 6px;">
+        <i class="fa-solid fa-book-open"></i>
+        <div class="title">The<span class="dot">Catalog</span></div>
+      </div>
+      <button class="icon-btn circle" id="hamburger" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+      <div class="search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Title, Author, Series, Genre, or ISBN...">
+      </div>
+      <div class="actions">
+        <button class="icon-btn circle hint" id="profileBtn" data-title="Profile"><i class="fa-regular fa-user"></i></button>
+        <button class="icon-btn circle hint" id="logoutBtn" data-title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="main" id="mainArea">
+      <section class="panel" id="continuePanel" style="margin-bottom:14px;">
+        <div class="row-head">
+          <div class="row-title">Continue Reading</div>
+        </div>
+        <div class="progress-rail"><div class="progress-bar"></div></div>
+        <div class="carousel" id="continueRow"></div>
+      </section>
+
+      <section class="panel" id="recentPanel">
+        <div class="row-head">
+          <div class="row-title">Recently Added</div>
+        </div>
+        <div class="grid" id="recentGrid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileOverlay" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <div class="modal-head">
+        <div id="profileTitle">User Profile Information</div>
+        <button class="close-btn" id="profileClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <h3 style="margin:0 0 10px 0;">User Profile</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="color:var(--muted);font-size:12px;">Username</div>
+              <div id="profileUsername"></div>
+            </div>
+            <div>
+              <div style="color:var(--muted);font-size:12px;">Full Name</div>
+              <div id="profileFullname"></div>
+            </div>
+            <div style="grid-column:1/-1;">
+              <div style="color:var(--muted);font-size:12px;">Email</div>
+              <div id="profileEmail"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider" style="margin:14px 0;"></div>
+        <div class="modal-section">
+          <h3 style="margin:0 0 10px 0;">Change Password</h3>
+          <div style="display:grid;gap:10px;">
+            <input class="formish" type="password" placeholder="Current Password" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+            <input class="formish" type="password" placeholder="New Password (at least 6 characters)" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+            <input class="formish" type="password" placeholder="Confirm New Password" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="icon-btn" style="padding:0 12px;height:36px;border-radius:10px;border-color:#236842;color:var(--text);background:#0e1a14;">
+          <i class="fa-solid fa-key"></i>
+          <span style="margin-left:8px;">Change Password</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link JS -->
+  <script src="dashboard.js"></script>
+</body>
+</html>
