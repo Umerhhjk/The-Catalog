@@ -16,4 +16,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["python", "login_signup.py"]
+CMD ["python", "app.py"]

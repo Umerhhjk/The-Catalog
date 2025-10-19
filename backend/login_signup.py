@@ -2,13 +2,13 @@ import os
 import time
 
 import psycopg2
-from flask import Flask, jsonify, request
+from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import check_password_hash, generate_password_hash
 
-app = Flask(__name__)
-CORS(app)
+auth_bp = Blueprint('auth', __name__)
+CORS(auth_bp)
 
 # Database configuration - reads from environment variables (Docker)
 DB_CONFIG = {
@@ -58,7 +58,7 @@ def init_db():
         except Exception as e:
             print(f"Error initializing database: {e}")
 
-@app.route('/api/signup', methods=['POST'])
+@auth_bp.route('/api/signup', methods=['POST'])
 def signup():
     """Handle user registration"""
     try:
@@ -118,7 +118,7 @@ def signup():
             'message': 'An error occurred during registration'
         }), 500
 
-@app.route('/api/login', methods=['POST'])
+@auth_bp.route('/api/login', methods=['POST'])
 def login():
     """Handle user login"""
     try:
@@ -179,7 +179,7 @@ def login():
             'message': 'An error occurred during login'
         }), 500
 
-@app.route('/api/health', methods=['GET'])
+@auth_bp.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint"""
     conn = get_db_connection()
@@ -193,9 +193,9 @@ def health():
         'database': db_status
     }), 200
 
-@app.route('/api/users', methods=['GET'])
+@auth_bp.route('/api/users', methods=['GET'])
 def get_all_users():
-    """Get all users (for testing only - remove in production!)"""
+    """Get all users (for testing only)"""
     try:
         conn = get_db_connection()
         if not conn:
@@ -215,10 +215,3 @@ def get_all_users():
         
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-if __name__ == '__main__':
-    print("Waiting for database to be ready...")
-    time.sleep(3)
-    init_db()
-    
-    app.run(debug=True, host='0.0.0.0', port=5000)
