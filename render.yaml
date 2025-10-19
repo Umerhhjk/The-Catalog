@@ -1,0 +1,38 @@
+# render.yaml
+services:
+  - type: web
+    name: library-backend
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DB_HOST
+        fromDatabase:
+          name: library-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: library-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: library-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: library-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: library-db
+          property: password
+
+databases:
+  - name: library-db
+    plan: free
