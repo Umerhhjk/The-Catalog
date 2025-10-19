@@ -7,7 +7,7 @@ from flask_cors import CORS
 from login_signup import auth_bp
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 app.register_blueprint(auth_bp)
 
