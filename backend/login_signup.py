@@ -1,4 +1,4 @@
-from app import get_db_connection
+from db_helper import get_db_connection
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import check_password_hash, generate_password_hash
