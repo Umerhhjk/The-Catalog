@@ -95,22 +95,22 @@
         <div class="modal-section">
           <h3 style="margin:0 0 10px 0;">Change Password</h3>
           <div style="display:grid;gap:10px;">
-            <input class="formish" type="password" placeholder="Current Password" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
-            <input class="formish" type="password" placeholder="New Password (at least 6 characters)" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
-            <input class="formish" type="password" placeholder="Confirm New Password" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+            <input id="currentPassword" class="formish" type="password" placeholder="Current Password" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+            <input id="newPassword" class="formish" type="password" placeholder="New Password (at least 8 characters)" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+            <input id="confirmPassword" class="formish" type="password" placeholder="Confirm New Password" style="background:#0f161a;border:1px solid #1b2a30;border-radius:10px;padding:10px 12px;color:var(--text);" />
+            <button id="changePasswordBtn" class="icon-btn password-btn" style="padding:0 12px;height:36px;border-radius:10px;border-color:#236842;color:var(--text);background:#0e1a14;margin-top:8px;">
+              <i class="fa-solid fa-key"></i>
+              <span style="margin-left:8px;">Change Password</span>
+            </button>
           </div>
+          <div id="passwordError" style="color:#ef4444;font-size:12px;margin-top:8px;display:none;"></div>
         </div>
-      </div>
-      <div class="modal-actions">
-        <button class="icon-btn" style="padding:0 12px;height:36px;border-radius:10px;border-color:#236842;color:var(--text);background:#0e1a14;">
-          <i class="fa-solid fa-key"></i>
-          <span style="margin-left:8px;">Change Password</span>
-        </button>
       </div>
     </div>
   </div>
 
   <!-- Link JS -->
+  <script src="../authentication.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

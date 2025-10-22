@@ -126,6 +126,77 @@ def login():
             'message': 'An error occurred during login'
         }), 500
 
+@auth_bp.route('/api/change-password', methods=['POST'])
+def change_password():
+    """Change user password"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        current_password = data.get('currentPassword')
+        new_password = data.get('newPassword')
+        
+        if not all([username, current_password, new_password]):
+            return jsonify({
+                'success': False,
+                'message': 'All fields are required'
+            }), 400
+        
+        # Validate new password strength
+        if len(new_password) < 8:
+            return jsonify({
+                'success': False,
+                'message': 'New password must be at least 8 characters long'
+            }), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Get user and verify current password
+        cursor.execute(
+            'SELECT id, password_hash FROM users WHERE username = %s',
+            (username,)
+        )
+        user = cursor.fetchone()
+        
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'User not found'
+            }), 404
+        
+        # Verify current password
+        if not check_password_hash(user['password_hash'], current_password):
+            return jsonify({
+                'success': False,
+                'message': 'Current password is incorrect'
+            }), 401
+        
+        # Hash new password and update database
+        new_password_hash = generate_password_hash(new_password)
+        cursor.execute(
+            'UPDATE users SET password_hash = %s WHERE id = %s',
+            (new_password_hash, user['id'])
+        )
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password changed successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"Change password error: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while changing password'
+        }), 500
+
 @auth_bp.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint"""

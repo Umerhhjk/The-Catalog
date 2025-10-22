@@ -194,6 +194,40 @@ function validateSignupForm(data) {
     return { isValid: true };
 }
 
+// Change password validation
+function validateChangePasswordForm(currentPassword, newPassword, confirmPassword) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        return { isValid: false, message: 'All fields are required' };
+    }
+
+    if (newPassword !== confirmPassword) {
+        return { isValid: false, message: 'New passwords do not match' };
+    }
+
+    if (!validatePassword(newPassword)) {
+        return { isValid: false, message: 'New password must be stronger (at least 8 characters, mix of letters, numbers, and symbols)' };
+    }
+
+    return { isValid: true };
+}
+
+// Change password API function
+async function changePasswordAPI(username, currentPassword, newPassword) {
+    const response = await fetch(`${API_URL}/change-password`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            username: username,
+            currentPassword: currentPassword,
+            newPassword: newPassword
+        })
+    });
+
+    return response;
+}
+
 // Custom Notification Popups
 function showNotification(type, title, message, duration = 4000) {
     const existingPopup = document.querySelector('.notification-popup');

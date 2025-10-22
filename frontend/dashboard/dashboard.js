@@ -234,6 +234,97 @@ window.addEventListener('popstate', (evt) => {
     try { localStorage.removeItem('currentUser'); } catch(e) {}
     window.location.replace('../index.html');
   });
+
+  // Change Password Functionality
+  const changePasswordBtn = document.getElementById('changePasswordBtn');
+  const currentPasswordInput = document.getElementById('currentPassword');
+  const newPasswordInput = document.getElementById('newPassword');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const passwordError = document.getElementById('passwordError');
+
+  // Show password error message
+  function showPasswordError(message) {
+    passwordError.textContent = message;
+    passwordError.style.display = 'block';
+  }
+
+  // Hide password error message
+  function hidePasswordError() {
+    passwordError.style.display = 'none';
+  }
+
+  // Change password handler
+  async function handleChangePassword() {
+    const currentPassword = currentPasswordInput.value.trim();
+    const newPassword = newPasswordInput.value.trim();
+    const confirmPassword = confirmPasswordInput.value.trim();
+
+    // Clear previous errors
+    hidePasswordError();
+
+    // Use validation function from authentication.js
+    const validation = validateChangePasswordForm(currentPassword, newPassword, confirmPassword);
+    if (!validation.isValid) {
+      showPasswordError(validation.message);
+      return;
+    }
+
+    // Set loading state
+    const originalText = changePasswordBtn.innerHTML;
+    changePasswordBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left:8px;">Changing...</span>';
+    changePasswordBtn.disabled = true;
+
+    try {
+      // Get current user
+      const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+      if (!currentUser || !currentUser.username) {
+        throw new Error('User session not found');
+      }
+
+      // Use API function from authentication.js
+      const response = await changePasswordAPI(currentUser.username, currentPassword, newPassword);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - clear form and show success message
+        currentPasswordInput.value = '';
+        newPasswordInput.value = '';
+        confirmPasswordInput.value = '';
+        showPasswordError('Password changed successfully!');
+        passwordError.style.color = '#22c55e';
+        
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          hidePasswordError();
+        }, 3000);
+      } else {
+        showPasswordError(data.message || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
+      showPasswordError('Server error. Please try again.');
+    } finally {
+      // Reset button state
+      changePasswordBtn.innerHTML = originalText;
+      changePasswordBtn.disabled = false;
+    }
+  }
+
+  // Add event listener to change password button
+  if (changePasswordBtn) {
+    changePasswordBtn.addEventListener('click', handleChangePassword);
+  }
+
+  // Add Enter key support for password form
+  [currentPasswordInput, newPasswordInput, confirmPasswordInput].forEach(input => {
+    if (input) {
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleChangePassword();
+        }
+      });
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', mount);
