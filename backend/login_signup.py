@@ -1,9 +1,36 @@
+import secrets
+import string
+
 from db_helper import get_db_connection
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import check_password_hash, generate_password_hash
 
 auth_bp = Blueprint('auth', __name__)
+
+def generate_user_id():
+    """Generate a unique 10-character UserId"""
+    max_attempts = 10
+    for _ in range(max_attempts):
+        user_id = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        
+        conn = get_db_connection()
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute('SELECT UserId FROM Users WHERE UserId = %s', (user_id,))
+                if not cur.fetchone():
+                    cur.close()
+                    conn.close()
+                    return user_id
+                cur.close()
+            except Exception:
+                pass
+            finally:
+                conn.close()
+    
+    import time
+    return f"USR{int(time.time()) % 1000000000:010d}"[:10]
 
 @auth_bp.route('/api/signup', methods=['POST'])
 def signup():
@@ -32,7 +59,7 @@ def signup():
         
         cur = conn.cursor()
         
-        cur.execute('SELECT id FROM users WHERE username = %s OR email = %s', (username, email))
+        cur.execute('SELECT UserId FROM Users WHERE Username = %s OR Email = %s', (username, email))
         existing_user = cur.fetchone()
         
         if existing_user:
@@ -43,11 +70,13 @@ def signup():
                 'message': 'Username or email already exists'
             }), 409
         
+        user_id = generate_user_id()
+        
         cur.execute(
-            'INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id',
-            (username, email, password_hash)
+            'INSERT INTO Users (UserId, Username, Email, PasswordHash, AdminIndicator) VALUES (%s, %s, %s, %s, %s) RETURNING UserId',
+            (user_id, username, email, password_hash, False)
         )
-        user_id = cur.fetchone()[0]
+        returned_user_id = cur.fetchone()[0]
         conn.commit()
         cur.close()
         conn.close()
@@ -55,7 +84,7 @@ def signup():
         return jsonify({
             'success': True,
             'message': 'User registered successfully',
-            'user_id': user_id
+            'user_id': returned_user_id
         }), 201
         
     except Exception as e:
@@ -90,7 +119,7 @@ def login():
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         cur.execute(
-            'SELECT id, username, email, password_hash FROM users WHERE username = %s',
+            'SELECT UserId, Username, Email, PasswordHash FROM Users WHERE Username = %s',
             (username,)
         )
         user = cur.fetchone()
@@ -103,7 +132,7 @@ def login():
                 'message': 'Invalid username or password'
             }), 401
         
-        if not check_password_hash(user['password_hash'], password):
+        if not check_password_hash(user['passwordhash'], password):
             return jsonify({
                 'success': False,
                 'message': 'Invalid username or password'
@@ -113,7 +142,7 @@ def login():
             'success': True,
             'message': 'Login successful',
             'user': {
-                'id': user['id'],
+                'id': user['userid'],
                 'username': user['username'],
                 'email': user['email']
             }
@@ -141,7 +170,6 @@ def change_password():
                 'message': 'All fields are required'
             }), 400
         
-        # Validate new password strength
         if len(new_password) < 8:
             return jsonify({
                 'success': False,
@@ -154,9 +182,8 @@ def change_password():
         
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Get user and verify current password
         cursor.execute(
-            'SELECT id, password_hash FROM users WHERE username = %s',
+            'SELECT UserId, PasswordHash FROM Users WHERE Username = %s',
             (username,)
         )
         user = cursor.fetchone()
@@ -167,18 +194,16 @@ def change_password():
                 'message': 'User not found'
             }), 404
         
-        # Verify current password
-        if not check_password_hash(user['password_hash'], current_password):
+        if not check_password_hash(user['passwordhash'], current_password):
             return jsonify({
                 'success': False,
                 'message': 'Current password is incorrect'
             }), 401
         
-        # Hash new password and update database
         new_password_hash = generate_password_hash(new_password)
         cursor.execute(
-            'UPDATE users SET password_hash = %s WHERE id = %s',
-            (new_password_hash, user['id'])
+            'UPDATE Users SET PasswordHash = %s WHERE UserId = %s',
+            (new_password_hash, user['userid'])
         )
         
         conn.commit()
@@ -220,7 +245,7 @@ def get_all_users():
             return jsonify({'success': False, 'message': 'DB connection failed'}), 500
         
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT id, username, email, created_at FROM users')
+        cur.execute('SELECT UserId, Username, Email, CreationTime FROM Users')
         users = cur.fetchall()
         cur.close()
         conn.close()
