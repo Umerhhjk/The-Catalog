@@ -1,6 +1,7 @@
 import os
 import time
 
+from crud_api import crud_bp
 from db_helper import init_db
 from flask import Flask
 from flask_cors import CORS
@@ -10,6 +11,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 app.register_blueprint(auth_bp)
+app.register_blueprint(crud_bp)
 
 if __name__ == "__main__":
     print("⏳ Waiting for database to be ready...")

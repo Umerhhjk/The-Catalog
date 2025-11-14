@@ -236,27 +236,3 @@ def health():
         'database': db_status
     }), 200
 
-@auth_bp.route('/api/users', methods=['GET'])
-def get_all_users():
-    """Get all users (for testing only)"""
-    try:
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': 'DB connection failed'}), 500
-        
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT UserId, Username, Email, CreationTime FROM Users')
-        users = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'count': len(users),
-            'users': users
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    
-
