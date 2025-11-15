@@ -5,8 +5,8 @@
   --main-green: #1DB954;
   --dark-green: #128c3c;
   --bg-dark: #121212;
-  --card-bg: #1e1e1e;
-  --detail-bg: #2a2a2a;
+  --card-bg: rgb(26,30,33);
+  --detail-bg: rgb(25,28,29);
   --grey: #444;
   --orange: #f59e0b;
 }

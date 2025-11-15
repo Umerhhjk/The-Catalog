@@ -40,6 +40,8 @@
         <input type="text" placeholder="Title, Author, Series, Genre, or ISBN...">
       </div>
       <div class="actions">
+        <button class="icon-btn circle hint" id="addBookBtn" data-title="Add Book"><i class="fa-solid fa-plus"></i></button>
+        <button class="icon-btn circle hint" id="settingsBtn" data-title="Settings"><i class="fa-solid fa-gear"></i></button>
         <button class="icon-btn circle hint" id="profileBtn" data-title="Profile"><i class="fa-regular fa-user"></i></button>
         <button class="icon-btn circle hint" id="logoutBtn" data-title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
       </div>
@@ -61,6 +63,44 @@
         </div>
         <div class="grid" id="recentGrid"></div>
       </section>
+
+      <!-- Settings Panel -->
+      <section class="panel settings-panel" id="settingsPanel" style="display: none;">
+        <div class="settings-header">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="back-btn" id="backBtn"><i class="fa-solid fa-arrow-left"></i></button>
+            <h2 style="margin: 0; font-size: 24px; font-weight: 700;">Settings</h2>
+          </div>
+        </div>
+        
+        <!-- Settings Tabs -->
+        <div class="settings-tabs">
+          <button class="settings-tab-btn active" data-tab="manage-requests">Manage Requests</button>
+          <button class="settings-tab-btn" data-tab="manage-users">Manage Users</button>
+          <button class="settings-tab-btn" data-tab="transaction-history">Transaction History</button>
+        </div>
+
+        <!-- Manage Requests Tab -->
+        <div class="settings-tab-content active" id="manage-requests">
+          <div style="padding: 20px; color: var(--muted);">
+            <p>Manage Requests - Content coming soon</p>
+          </div>
+        </div>
+
+        <!-- Manage Users Tab -->
+        <div class="settings-tab-content" id="manage-users">
+          <div style="padding: 20px; color: var(--muted);">
+            <p>Manage Users - Content coming soon</p>
+          </div>
+        </div>
+
+        <!-- Transaction History Tab -->
+        <div class="settings-tab-content" id="transaction-history">
+          <div style="padding: 20px; color: var(--muted);">
+            <p>Transaction History - Content coming soon</p>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -76,18 +116,48 @@
       <div class="modal-body">
         <div class="modal-section">
           <h3 style="margin:0 0 10px 0;">User Profile</h3>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-              <div style="color:var(--muted);font-size:12px;">Username</div>
-              <div id="profileUsername"></div>
+          
+          <!-- Display Mode -->
+          <div class="profile-display">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <div style="color:var(--muted);font-size:12px;">Username</div>
+                <div id="profileUsername"></div>
+              </div>
+              <div>
+                <div style="color:var(--muted);font-size:12px;">Full Name</div>
+                <div id="profileFullname"></div>
+              </div>
+              <div style="grid-column:1/-1;">
+                <div style="color:var(--muted);font-size:12px;">Email</div>
+                <div id="profileEmail"></div>
+              </div>
             </div>
-            <div>
-              <div style="color:var(--muted);font-size:12px;">Full Name</div>
-              <div id="profileFullname"></div>
+            <button id="editProfileBtn" class="edit-btn">
+              <i class="fa-solid fa-pencil"></i>
+              <span>Edit</span>
+            </button>
+          </div>
+
+          <!-- Edit Mode -->
+          <div class="profile-edit">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <div style="color:var(--muted);font-size:12px;margin-bottom:4px;">Username</div>
+                <div id="profileUsernameDisplay" style="color:var(--muted);font-size:12px;">(Cannot be changed)</div>
+              </div>
+              <div>
+                <div style="color:var(--muted);font-size:12px;margin-bottom:4px;">Full Name</div>
+                <input type="text" id="editFullname" placeholder="Enter full name">
+              </div>
+              <div style="grid-column:1/-1;">
+                <div style="color:var(--muted);font-size:12px;margin-bottom:4px;">Email</div>
+                <input type="email" id="editEmail" placeholder="Enter email address">
+              </div>
             </div>
-            <div style="grid-column:1/-1;">
-              <div style="color:var(--muted);font-size:12px;">Email</div>
-              <div id="profileEmail"></div>
+            <div class="edit-actions">
+              <button id="cancelEditBtn" class="cancel-btn">Cancel</button>
+              <button id="saveEditBtn" class="save-btn">Save Changes</button>
             </div>
           </div>
         </div>

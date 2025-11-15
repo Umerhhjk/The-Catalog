@@ -69,10 +69,6 @@ function renderDashboard(){
     main.appendChild(recentPanel);
   }
 
-  // Make sure they are visible
-  continuePanel.style.display = '';
-  recentPanel.style.display = '';
-
   // Populate lists (clear first)
   const continueRow = document.getElementById('continueRow') || (() => {
     const r = document.createElement('div'); r.id = 'continueRow'; continuePanel.appendChild(r); return r;
@@ -85,16 +81,15 @@ function renderDashboard(){
   })();
   recentGrid.innerHTML = '';
   books.slice(0, 8).forEach((b, i) => recentGrid.appendChild(createBookCard(b, i)));
+
+  // Navigate to dashboard view using ViewManager
+  if (typeof viewManager !== 'undefined') {
+    viewManager.navigateTo('dashboard');
+  }
 }
 
 function renderBookDetails(book) {
   const main = document.getElementById('mainArea');
-
-  // Hide dashboard panels but don't remove them
-  const continuePanel = document.getElementById('continuePanel');
-  const recentPanel = document.getElementById('recentPanel');
-  if (continuePanel) continuePanel.style.display = 'none';
-  if (recentPanel) recentPanel.style.display = 'none';
 
   // Create (or reuse) detailsPanel inside mainArea
   let details = document.getElementById('detailsPanel');
@@ -123,6 +118,11 @@ function renderBookDetails(book) {
 
   // store selection (optional)
   try { localStorage.setItem('selectedBook', JSON.stringify(book)); } catch (e) {}
+
+  // Navigate to bookdetails view using ViewManager
+  if (typeof viewManager !== 'undefined') {
+    viewManager.navigateTo('bookdetails');
+  }
 }
 
 
@@ -229,6 +229,192 @@ window.addEventListener('popstate', (evt) => {
   profileBtn.addEventListener('click', openProfile);
   profileClose.addEventListener('click', closeProfile);
   overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeProfile(); });
+  // ============================================================
+  // SIMPLE VIEW MANAGER (no stack) - uses current/previous only
+  // ============================================================
+  // We intentionally keep this minimal: a `currentView` and `previousView`.
+  // This removes the stack-based navigation and restores a simple back behavior.
+
+  const viewManager = window.viewManager = {
+    currentView: 'dashboard',
+    previousView: null,
+
+    // map view names to show/hide handlers
+    _show(viewName) {
+      if (viewName === 'dashboard') {
+        const continuePanel = document.getElementById('continuePanel');
+        const recentPanel = document.getElementById('recentPanel');
+        if (continuePanel) continuePanel.style.display = '';
+        if (recentPanel) recentPanel.style.display = '';
+      } else if (viewName === 'bookdetails') {
+        const detailsPanel = document.getElementById('detailsPanel');
+        if (detailsPanel) detailsPanel.style.display = '';
+      } else if (viewName === 'settings') {
+        const settingsPanel = document.getElementById('settingsPanel');
+        if (settingsPanel) settingsPanel.style.display = 'block';
+      }
+    },
+
+    _hide(viewName) {
+      if (viewName === 'dashboard') {
+        const continuePanel = document.getElementById('continuePanel');
+        const recentPanel = document.getElementById('recentPanel');
+        if (continuePanel) continuePanel.style.display = 'none';
+        if (recentPanel) recentPanel.style.display = 'none';
+      } else if (viewName === 'bookdetails') {
+        const detailsPanel = document.getElementById('detailsPanel');
+        if (detailsPanel) detailsPanel.style.display = 'none';
+      } else if (viewName === 'settings') {
+        const settingsPanel = document.getElementById('settingsPanel');
+        if (settingsPanel) settingsPanel.style.display = 'none';
+      }
+    },
+
+    navigateTo(viewName) {
+      if (!viewName || viewName === this.currentView) return false;
+      // hide current
+      this._hide(this.currentView);
+      // set previous and current
+      this.previousView = this.currentView;
+      this.currentView = viewName;
+      // show new
+      this._show(this.currentView);
+      return true;
+    },
+
+    goBack() {
+      if (!this.previousView) {
+        console.warn('No previous view to go back to');
+        return false;
+      }
+      // hide current and show previous
+      this._hide(this.currentView);
+      const target = this.previousView;
+      this.previousView = null;
+      this.currentView = target;
+      this._show(this.currentView);
+      return true;
+    }
+  };
+
+  // Settings Panel Functionality - Now using ViewManager
+  const settingsBtn = document.getElementById('settingsBtn');
+  const backBtn = document.getElementById('backBtn');
+  const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
+  const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+
+  settingsBtn.addEventListener('click', () => viewManager.navigateTo('settings'));
+  backBtn.addEventListener('click', () => viewManager.goBack());
+
+  // Settings Tab switching
+  settingsTabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.tab;
+      
+      // Remove active class from all tabs
+      settingsTabBtns.forEach((b) => b.classList.remove('active'));
+      settingsTabContents.forEach((content) => content.classList.remove('active'));
+      
+      // Add active class to clicked tab
+      btn.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    });
+  });
+
+  // Profile Edit Functionality
+  const editProfileBtn = document.getElementById('editProfileBtn');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const saveEditBtn = document.getElementById('saveEditBtn');
+  const editFullname = document.getElementById('editFullname');
+  const editEmail = document.getElementById('editEmail');
+  const modalSection = document.querySelector('.modal-section');
+
+  function enterEditMode() {
+    modalSection.classList.add('edit-mode');
+    // Populate edit fields with current values
+    const stored = localStorage.getItem('currentUser');
+    if (stored) {
+      const user = JSON.parse(stored);
+      editFullname.value = user.fullName || '';
+      editEmail.value = user.email || '';
+    }
+  }
+
+  function exitEditMode() {
+    modalSection.classList.remove('edit-mode');
+    // Clear edit fields
+    editFullname.value = '';
+    editEmail.value = '';
+  }
+
+  function saveProfileChanges() {
+    const fullName = editFullname.value.trim();
+    const email = editEmail.value.trim();
+
+    // Basic validation
+    if (!fullName) {
+      alert('Full name is required');
+      return;
+    }
+    if (!email) {
+      alert('Email is required');
+      return;
+    }
+    if (!email.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    // Update user data in localStorage
+    try {
+      const stored = localStorage.getItem('currentUser');
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.fullName = fullName;
+        user.email = email;
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Update display
+        document.getElementById('profileFullname').textContent = fullName;
+        document.getElementById('profileEmail').textContent = email;
+        
+        // Call backend API to update profile
+        updateUserProfile(user);
+        
+        exitEditMode();
+      }
+    } catch (e) {
+      console.error('Error saving profile:', e);
+      alert('Error saving profile changes');
+    }
+  }
+
+  async function updateUserProfile(user) {
+    try {
+      const response = await fetch('/api/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: user.username,
+          fullName: user.fullName,
+          email: user.email
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile on server:', error);
+      // Note: We don't show an error to user since localStorage was updated
+    }
+  }
+
+  editProfileBtn.addEventListener('click', enterEditMode);
+  cancelEditBtn.addEventListener('click', exitEditMode);
+  saveEditBtn.addEventListener('click', saveProfileChanges);
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
     try { localStorage.removeItem('currentUser'); } catch(e) {}
