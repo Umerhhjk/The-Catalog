@@ -18,28 +18,40 @@ function showToast(title, message) {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// ----------------- Data objects -----------------
-const bookData = {
-  name: "Degeneration",
-  author: "Max Simon Nordau",
-  category: "Literary Criticism",
-  genre: "Nonfiction",
-  publisher: "University of Nebraska",
-  publishdate: "1993-11-01",
-  language: "English",
-  pagecount: 566,
-  copiesavailable: 30,
-  imglink: "temp.png",
-  rating: 4.3,  
-  usersRated: 1200,   
-  rated: "E for Everyone",
-  description: `Max Nordau's *Degeneration* is a landmark study of fin-de-siècle culture. 
+// ----------------- Data objects (dummy for now) -----------------
+const Author = {
+  AuthorId: 1,
+  AuthorName: "Max Simon Nordau",
+  AuthorBio: `Max Nordau (1849–1923) was a Hungarian physician, author, and social critic best known for his work *Degeneration*, where he critiqued modern art and culture.`
+};
+
+const Publisher = {
+  PublisherId: 1,
+  PublisherName: "University of Nebraska"
+};
+
+const Book = {
+  BookId: 101,
+  Name: "Degeneration",
+  AuthorID: Author.AuthorId,
+  Category: "Literary Criticism",
+  Genre: "Nonfiction",
+  PublisherID: Publisher.PublisherId,
+  PublishDate: "1993-11-01",
+  Language: "English",
+  PageCount: 566,
+  CopiesAvailable: 30,
+  ImgLink: "temp.png",
+  RatedType: "E for Everyone",
+  Description: `Max Nordau's *Degeneration* is a landmark study of fin-de-siècle culture. 
   In this provocative work, Nordau critiques modernist art and literature, arguing that the 
   aesthetic trends of the time reflected a cultural and moral decline. He links the 
   decadence of European society with the psychological states of its leading artists. 
   This dummy text continues with additional filler to simulate a long description for testing purposes. 
   It elaborates on ideas of hysteria, neurosis, and artistic excess — the main themes Nordau identified 
-  in figures such as Nietzsche and Oscar Wilde.`
+  in figures such as Nietzsche and Oscar Wilde.`,
+  Rating: 4.3,
+  UsersRated: 1200
 };
 
 const userData = {
@@ -52,20 +64,20 @@ const userData = {
 // ----------------- Populate DOM from objects -----------------
 function populateDetails() {
   const imgEl = document.getElementById("book-img");
-  if (imgEl) imgEl.src = bookData.imglink;
+  if (imgEl) imgEl.src = Book.ImgLink;
 
-  document.getElementById("book-name").textContent = bookData.name;
-  document.getElementById("book-author").textContent = bookData.author;
-  document.getElementById("book-category").textContent = bookData.category;
-  document.getElementById("book-genre").textContent = bookData.genre;
-  document.getElementById("book-publisher").textContent = bookData.publisher;
-  document.getElementById("book-publishdate").textContent = bookData.publishdate;
-  document.getElementById("book-language").textContent = bookData.language;
-  document.getElementById("book-pagecount").textContent = bookData.pagecount;
-  document.getElementById("book-copies").textContent = bookData.copiesavailable;
-  document.getElementById("book-rating").textContent = `${bookData.rating.toFixed(1)}/5`;
-  document.getElementById("book-usersrated").textContent = `${bookData.usersRated} users`;
-  document.getElementById("book-rated").textContent = bookData.rated;
+  document.getElementById("book-name").textContent = Book.Name;
+  document.getElementById("book-author").textContent = Author.AuthorName;
+  document.getElementById("book-category").textContent = Book.Category;
+  document.getElementById("book-genre").textContent = Book.Genre;
+  document.getElementById("book-publisher").textContent = Publisher.PublisherName;
+  document.getElementById("book-publishdate").textContent = Book.PublishDate;
+  document.getElementById("book-language").textContent = Book.Language;
+  document.getElementById("book-pagecount").textContent = Book.PageCount;
+  document.getElementById("book-copies").textContent = Book.CopiesAvailable;
+  document.getElementById("book-rating").textContent = `${Book.Rating.toFixed(1)}/5`;
+  document.getElementById("book-usersrated").textContent = `${Book.UsersRated} users`;
+  document.getElementById("book-rated").textContent = Book.RatedType;
 }
 populateDetails();
 
@@ -79,7 +91,7 @@ function updateButtonState() {
   bookButton.classList.remove("green", "grey", "orange", "darkgreen");
   bookButton.disabled = false;
 
-  if (bookData.copiesavailable <= 0 && userData.booked === 0) {
+  if (Book.CopiesAvailable <= 0 && userData.booked === 0) {
     bookButton.textContent = "Book";
     bookButton.classList.add("darkgreen");
     bookButton.disabled = true;
@@ -99,15 +111,15 @@ function updateButtonState() {
   }
 
   const copiesEl = document.getElementById("book-copies");
-  if (copiesEl) copiesEl.textContent = bookData.copiesavailable;
+  if (copiesEl) copiesEl.textContent = Book.CopiesAvailable;
 }
 
 // ----------------- Booking / Return logic -----------------
 if (bookButton) {
   bookButton.addEventListener("click", () => {
-    if (userData.booked === 0 && userData.pendingreturn === 0 && bookData.copiesavailable > 0) {
+    if (userData.booked === 0 && userData.pendingreturn === 0 && Book.CopiesAvailable > 0) {
       userData.booked = 1;
-      bookData.copiesavailable = Math.max(0, bookData.copiesavailable - 1);
+      Book.CopiesAvailable = Math.max(0, Book.CopiesAvailable - 1);
 
       if (userData.wishlisted === 1) {
         userData.wishlisted = 0;
@@ -148,12 +160,10 @@ if (wishlistButton) {
   });
 }
 
-
-
 // ----------------- STAR RATING (green fill + updates book rating) -----------------
 const stars = document.querySelectorAll('.star');
 let persistentRating = userData.personalRating || 0;
-let hasRatedBefore = userData.personalRating > 0; // track if user rated before
+let hasRatedBefore = userData.personalRating > 0;
 
 function updateStars() {
   if (!stars) return;
@@ -176,19 +186,12 @@ if (stars && stars.length) {
     star.addEventListener('mouseover', () => {
       stars.forEach(s => {
         const v = parseInt(s.dataset.value, 10);
-        if (v <= val) {
-          s.classList.add('filled');
-          s.textContent = '★';
-        } else {
-          s.classList.remove('filled');
-          s.textContent = '☆';
-        }
+        s.textContent = v <= val ? '★' : '☆';
+        s.classList.toggle('filled', v <= val);
       });
     });
 
-    star.addEventListener('mouseout', () => {
-      updateStars();
-    });
+    star.addEventListener('mouseout', updateStars);
 
     star.addEventListener('click', () => {
       const oldRating = userData.personalRating;
@@ -196,18 +199,15 @@ if (stars && stars.length) {
       userData.personalRating = val;
 
       if (!hasRatedBefore) {
-        // First time rating
-        bookData.usersRated += 1;
-        bookData.rating = ((bookData.rating * (bookData.usersRated - 1)) + val) / bookData.usersRated;
+        Book.UsersRated += 1;
+        Book.Rating = ((Book.Rating * (Book.UsersRated - 1)) + val) / Book.UsersRated;
         hasRatedBefore = true;
       } else {
-        // Updating existing rating: remove old contribution, add new one
-        bookData.rating = ((bookData.rating * bookData.usersRated) - oldRating + val) / bookData.usersRated;
+        Book.Rating = ((Book.Rating * Book.UsersRated) - oldRating + val) / Book.UsersRated;
       }
 
-      // Reflect in UI
-      document.getElementById("book-rating").textContent = `${bookData.rating.toFixed(1)}/5`;
-      document.getElementById("book-usersrated").textContent = `${bookData.usersRated} users`;
+      document.getElementById("book-rating").textContent = `${Book.Rating.toFixed(1)}/5`;
+      document.getElementById("book-usersrated").textContent = `${Book.UsersRated} users`;
 
       updateStars();
       showToast("Rating Saved", `You rated this ${persistentRating} star${persistentRating>1?'s':''}.`);
@@ -221,7 +221,7 @@ window.adminApproveReturn = function() {
   if (userData.pendingreturn === 1 && userData.booked === 1) {
     userData.booked = 0;
     userData.pendingreturn = 0;
-    bookData.copiesavailable = bookData.copiesavailable + 1;
+    Book.CopiesAvailable = Book.CopiesAvailable + 1;
 
     populateDetails();
     updateButtonState();
@@ -237,7 +237,7 @@ updateButtonState();
 const descText = document.getElementById("description-text");
 const toggleBtn = document.getElementById("toggle-description");
 
-const fullText = bookData.description;
+const fullText = Book.Description;
 const shortText = fullText.split(" ").slice(0, 60).join(" ") + "...";
 
 let expanded = false;
@@ -248,3 +248,38 @@ toggleBtn.addEventListener("click", () => {
   descText.textContent = expanded ? fullText : shortText;
   toggleBtn.textContent = expanded ? "Show less" : "Show more";
 });
+
+// ----------------- ADMIN BUTTON VISIBILITY -----------------
+let AdminIndicator = 0;
+let currentUserId = null;
+
+try {
+  const currentUser = JSON.parse(localStorage.getItem('selectedUser'));
+  if (currentUser) {
+    AdminIndicator = currentUser.adminindicator ? 1 : 0;
+    currentUserId = currentUser.userid || null;
+  }
+} catch (e) {
+  console.warn("No user info found:", e);
+}
+
+const adminButton = document.getElementById("admin-button");
+
+function updateAdminButton() {
+  if (AdminIndicator === 1) {
+    adminButton.style.display = "inline-block";
+
+    adminButton.addEventListener("click", () => {
+      // Direct navigation instead of fetch + injection
+      window.location.href = "../editbook/editbook.html";
+    });
+
+  } else {
+    adminButton.style.display = "none";
+    adminButton.disabled = true;
+  }
+}
+
+updateAdminButton();
+
+

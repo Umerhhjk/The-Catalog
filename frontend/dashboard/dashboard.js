@@ -96,7 +96,6 @@ function renderBookDetails(book) {
   if (!details) {
     details = document.createElement('div');
     details.id = 'detailsPanel';
-    // keep detailsPanel full width/height as needed
     details.style.width = '100%';
     details.style.minHeight = '400px';
     main.appendChild(details);
@@ -104,8 +103,16 @@ function renderBookDetails(book) {
     details.innerHTML = ''; // clear previous
   }
 
-  // Use iframe to load the book details page (this avoids fetching/injecting full document
-  // which would remove your dashboard DOM nodes)
+  // Save selected book (optional) and current user for bookdetails.js
+  try { 
+    localStorage.setItem('selectedBook', JSON.stringify(book)); 
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    localStorage.setItem('selectedUser', JSON.stringify(currentUser));
+  } catch (e) {
+    console.warn('Failed to store book/user info:', e);
+  }
+
+  // Use iframe to load the book details page
   const iframe = document.createElement('iframe');
   iframe.title = 'Book Details';
   iframe.src = `../bookdetails/bookdetails.html?id=${encodeURIComponent(book.id)}`;
@@ -115,9 +122,6 @@ function renderBookDetails(book) {
   iframe.style.overflow = 'hidden';
 
   details.appendChild(iframe);
-
-  // store selection (optional)
-  try { localStorage.setItem('selectedBook', JSON.stringify(book)); } catch (e) {}
 
   // Navigate to bookdetails view using ViewManager
   if (typeof viewManager !== 'undefined') {
@@ -151,14 +155,45 @@ function navigateTo(search) {
 function mount() {
   try {
     const stored = localStorage.getItem('currentUser');
-    const uEl = document.getElementById('profileUsername');
-    const nEl = document.getElementById('profileFullname');
-    const eEl = document.getElementById('profileEmail');
-    if (stored) {
-      const user = JSON.parse(stored);
-      if (uEl && user.username) uEl.textContent = user.username;
-      if (eEl && user.email) eEl.textContent = user.email;
-      if (nEl && user.fullName) nEl.textContent = user.fullName;
+const uEl = document.getElementById('profileUsername');
+const nEl = document.getElementById('profileFullname');
+const eEl = document.getElementById('profileEmail');
+
+const addBookBtn = document.getElementById('addBookBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const profileBtn = document.getElementById('profileBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
+if (stored) {
+  const user = JSON.parse(stored);
+
+  // Set profile info
+  if (uEl && user.username) uEl.textContent = user.username;
+  if (eEl && user.email) eEl.textContent = user.email;
+  if (nEl && user.fullName) nEl.textContent = user.fullName;
+
+  // Show/hide buttons based on adminindicator
+  if (user.adminindicator) {
+    addBookBtn.style.display = '';
+    settingsBtn.style.display = '';
+    profileBtn.style.display = '';
+    logoutBtn.style.display = '';
+  } else {
+    addBookBtn.style.display = 'none';
+    settingsBtn.style.display = 'none';
+    profileBtn.style.display = '';
+    logoutBtn.style.display = '';
+  }
+    } else {
+      // No user logged in: hide all
+      const addBookBtn = document.getElementById('addBookBtn');
+      const settingsBtn = document.getElementById('settingsBtn');
+      const profileBtn = document.getElementById('profileBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      addBookBtn.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      profileBtn.style.display = 'none';
+      logoutBtn.style.display = 'none';
     }
   } catch (e) {}
 
@@ -176,32 +211,27 @@ function mount() {
   } else {
     renderDashboard();
     if (!history.state) {
-  const params = new URLSearchParams(location.search);
-  // Ensure the initial history state is present for reliable back/forward
-const initialParams = new URLSearchParams(window.location.search);
-history.replaceState({ id: initialParams.get('id') || null }, '', location.href);
-
-}
+      history.replaceState({ id: initialParams.get('id') || null }, '', location.href);
+    }
   }
 
-window.addEventListener('popstate', (evt) => {
-  const id = evt.state && evt.state.id
-    ? evt.state.id
-    : new URLSearchParams(location.search).get('id');
+  window.addEventListener('popstate', (evt) => {
+    const id = evt.state && evt.state.id
+      ? evt.state.id
+      : new URLSearchParams(location.search).get('id');
 
-  fadeOutIn(() => {
-    if (id) {
-      const match =
-        books.find(b => b.id === id) ||
-        JSON.parse(localStorage.getItem('selectedBook') || 'null') ||
-        { id, title: id.replace(/-/g, ' ') };
-      renderBookDetails(match);
-    } else {
-      renderDashboard();
-    }
+    fadeOutIn(() => {
+      if (id) {
+        const match =
+          books.find(b => b.id === id) ||
+          JSON.parse(localStorage.getItem('selectedBook') || 'null') ||
+          { id, title: id.replace(/-/g, ' ') };
+        renderBookDetails(match);
+      } else {
+        renderDashboard();
+      }
+    });
   });
-});
-
 
   document.querySelectorAll('.nav-item').forEach(a => a.addEventListener('click', e => e.preventDefault()));
 
@@ -229,17 +259,10 @@ window.addEventListener('popstate', (evt) => {
   profileBtn.addEventListener('click', openProfile);
   profileClose.addEventListener('click', closeProfile);
   overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeProfile(); });
-  // ============================================================
-  // SIMPLE VIEW MANAGER (no stack) - uses current/previous only
-  // ============================================================
-  // We intentionally keep this minimal: a `currentView` and `previousView`.
-  // This removes the stack-based navigation and restores a simple back behavior.
 
   const viewManager = window.viewManager = {
     currentView: 'dashboard',
     previousView: null,
-
-    // map view names to show/hide handlers
     _show(viewName) {
       if (viewName === 'dashboard') {
         const continuePanel = document.getElementById('continuePanel');
@@ -254,7 +277,6 @@ window.addEventListener('popstate', (evt) => {
         if (settingsPanel) settingsPanel.style.display = 'block';
       }
     },
-
     _hide(viewName) {
       if (viewName === 'dashboard') {
         const continuePanel = document.getElementById('continuePanel');
@@ -269,25 +291,16 @@ window.addEventListener('popstate', (evt) => {
         if (settingsPanel) settingsPanel.style.display = 'none';
       }
     },
-
     navigateTo(viewName) {
       if (!viewName || viewName === this.currentView) return false;
-      // hide current
       this._hide(this.currentView);
-      // set previous and current
       this.previousView = this.currentView;
       this.currentView = viewName;
-      // show new
       this._show(this.currentView);
       return true;
     },
-
     goBack() {
-      if (!this.previousView) {
-        console.warn('No previous view to go back to');
-        return false;
-      }
-      // hide current and show previous
+      if (!this.previousView) return false;
       this._hide(this.currentView);
       const target = this.previousView;
       this.previousView = null;
@@ -297,7 +310,6 @@ window.addEventListener('popstate', (evt) => {
     }
   };
 
-  // Settings Panel Functionality - Now using ViewManager
   const settingsBtn = document.getElementById('settingsBtn');
   const backBtn = document.getElementById('backBtn');
   const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
@@ -306,22 +318,16 @@ window.addEventListener('popstate', (evt) => {
   settingsBtn.addEventListener('click', () => viewManager.navigateTo('settings'));
   backBtn.addEventListener('click', () => viewManager.goBack());
 
-  // Settings Tab switching
   settingsTabBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const tabId = btn.dataset.tab;
-      
-      // Remove active class from all tabs
       settingsTabBtns.forEach((b) => b.classList.remove('active'));
       settingsTabContents.forEach((content) => content.classList.remove('active'));
-      
-      // Add active class to clicked tab
       btn.classList.add('active');
       document.getElementById(tabId).classList.add('active');
     });
   });
 
-  // Profile Edit Functionality
   const editProfileBtn = document.getElementById('editProfileBtn');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
   const saveEditBtn = document.getElementById('saveEditBtn');
@@ -331,7 +337,6 @@ window.addEventListener('popstate', (evt) => {
 
   function enterEditMode() {
     modalSection.classList.add('edit-mode');
-    // Populate edit fields with current values
     const stored = localStorage.getItem('currentUser');
     if (stored) {
       const user = JSON.parse(stored);
@@ -342,7 +347,6 @@ window.addEventListener('popstate', (evt) => {
 
   function exitEditMode() {
     modalSection.classList.remove('edit-mode');
-    // Clear edit fields
     editFullname.value = '';
     editEmail.value = '';
   }

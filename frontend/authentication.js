@@ -50,6 +50,14 @@ async function handleLogin(e) {
             showNotification('success', 'Login Successful', 'Redirecting to dashboard...');
             localStorage.setItem('currentUser', JSON.stringify(data.user));
 
+            // ==========================================================
+            //   ADDED: store numeric userId for dashboard consumption
+            // ==========================================================
+            if (data.user && data.user.id !== undefined) {
+                localStorage.setItem('currentUserId', data.user.id);
+            }
+            // ==========================================================
+
             setTimeout(() => {
                 window.location.replace('dashboard/dashboard.html');
             }, 1500);
@@ -75,11 +83,8 @@ async function handleSignup(e) {
     const confirmPassword = document.getElementById('confirmPassword')?.value.trim();
     const role = document.getElementById('role')?.value;
 
-    // Validation rules (only on form submission)
-    const validation = validateSignupForm({
-        fullName, email, username, password, confirmPassword, role
-    });
-    
+    // Validation rules
+    const validation = validateSignupForm({ fullName, email, username, password, confirmPassword, role });
     if (!validation.isValid) {
         showNotification('error', 'Validation Error', validation.message);
         return;
@@ -88,10 +93,18 @@ async function handleSignup(e) {
     setLoadingState(true);
 
     try {
+        // Convert role to adminIndicator
+        const adminIndicator = role?.toLowerCase() === 'librarian';
+
         const response = await fetch(`${API_URL}/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
+            body: JSON.stringify({
+                username,
+                email,
+                password,
+                adminIndicator // <-- send this to backend
+            })
         });
 
         const data = await response.json();
@@ -113,6 +126,7 @@ async function handleSignup(e) {
     }
 }
 
+
 // VALIDATION FUNCTIONS (only used on form submission)
 function validatePassword(password) {
     const requirements = {
@@ -129,68 +143,40 @@ function validatePassword(password) {
 }
 
 function validateSignupForm(data) {
-    // Check required fields
-    if (!data.fullName) {
-        return { isValid: false, message: 'Full name is required' };
-    }
-    
-    if (!data.email) {
-        return { isValid: false, message: 'Email is required' };
-    }
-    
-    if (!data.username) {
-        return { isValid: false, message: 'Username is required' };
-    }
-    
-    if (!data.password) {
-        return { isValid: false, message: 'Password is required' };
-    }
-    
-    if (!data.confirmPassword) {
-        return { isValid: false, message: 'Please confirm your password' };
-    }
-    
-    if (!data.role) {
-        return { isValid: false, message: 'Please select account type' };
-    }
-    
-    // Email validation
+    if (!data.fullName) return { isValid: false, message: 'Full name is required' };
+    if (!data.email) return { isValid: false, message: 'Email is required' };
+    if (!data.username) return { isValid: false, message: 'Username is required' };
+    if (!data.password) return { isValid: false, message: 'Password is required' };
+    if (!data.confirmPassword) return { isValid: false, message: 'Please confirm your password' };
+    if (!data.role) return { isValid: false, message: 'Please select account type' };
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
         return { isValid: false, message: 'Please enter a valid email address' };
     }
-    
-    // Username validation (alphanumeric, 3-20 characters, no email patterns)
+
     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    const emailPattern = /@.*\.(com|org|net|edu|gov|co|uk|ca|au|de|fr|it|es|nl|se|no|dk|fi|pl|cz|hu|ro|bg|hr|sk|si|lt|lv|ee|lu|mt|cy|ie|pt|gr|be|at|ch|li|is|ad|mc|sm|va)$/i;
-    
+    const emailPattern = /@.*\.(com|org|net|edu|gov|co|uk|...|va)$/i;
+
     if (!usernameRegex.test(data.username)) {
         return { isValid: false, message: 'Username must be 3-20 characters, letters, numbers, and underscores only' };
     }
-    
     if (emailPattern.test(data.username)) {
         return { isValid: false, message: 'Username cannot contain email patterns.' };
     }
-    
-    // Full name validation (no email patterns)
     if (emailPattern.test(data.fullName)) {
         return { isValid: false, message: 'Full name cannot contain email patterns' };
     }
-    
     if (!/^[a-zA-Z\s\-'\.]+$/.test(data.fullName)) {
         return { isValid: false, message: 'Full name can only contain letters, spaces, hyphens, apostrophes, and periods' };
     }
-    
-    // Password validation
     if (!validatePassword(data.password)) {
         return { isValid: false, message: 'Password must be stronger.' };
     }
-    
-    // Password confirmation
     if (data.password !== data.confirmPassword) {
         return { isValid: false, message: 'Passwords do not match' };
     }
-    
+
     return { isValid: true };
 }
 

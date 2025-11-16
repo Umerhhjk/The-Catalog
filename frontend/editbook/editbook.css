@@ -1,0 +1,186 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+  background-color: #1e1e1e;
+  color: #f1f1f1;
+  margin: 0;
+  padding: 10px;
+}
+
+/* Container */
+.book-details-container {
+  display: flex;
+  background-color: #2b2b2b;
+  border-radius: 10px;
+  padding: 20px;
+  gap: 30px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  align-items: flex-start;
+}
+
+/* Left side */
+.book-image-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.book-cover {
+  width: 200px;
+  height: 280px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+/* Right side */
+.book-info-section {
+  flex: 1;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px 20px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row label {
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #ddd;
+}
+
+.form-row input {
+  padding: 8px;
+  background-color: #3b3b3b;
+  border: 1px solid #555;
+  border-radius: 5px;
+  color: white;
+}
+
+/* Change Cover Button under form */
+.image-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 30px;
+  justify-content: flex-start; /* aligns with form left edge */
+}
+
+.change-btn {
+  background-color: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.change-btn:hover {
+  background-color: #d68910;
+}
+
+/* Description Section */
+.description-section {
+  background-color: #2b2b2b;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 0;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.description-section label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 8px;
+  color: #ddd;
+}
+
+.description-section textarea {
+  width: 100%;
+  resize: none;
+  padding: 10px;
+  background-color: #3b3b3b;
+  border: 1px solid #555;
+  border-radius: 5px;
+  color: white;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+/* Save / Cancel Buttons */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+  gap: 10px;
+}
+
+.save-btn, .cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.cancel-btn {
+  background-color: #555;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+.cancel-btn:hover {
+  background-color: #666;
+}
+
+/* Alert box */
+.alert-box {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  background-color: #1b5e20;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  overflow: hidden;
+  border-left: 5px solid #00e676;
+  animation: fadeIn 0.3s ease;
+  z-index: 1000;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.alert-header {
+  background-color: #145214;
+  font-weight: 600;
+  padding: 8px 14px;
+  font-size: 15px;
+}
+
+.alert-message {
+  padding: 10px 14px;
+  background-color: #145214;
+  font-size: 14px;
+}
+
+.alert-box.hidden {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

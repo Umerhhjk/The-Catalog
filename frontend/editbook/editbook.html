@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Book</title>
+  <link rel="stylesheet" href="editbook.css">
+</head>
+<body>
+  <!-- Alert Box -->
+  <div id="alertBox" class="alert-box hidden">
+    <div id="alertHeader" class="alert-header">Success</div>
+    <div id="alertMessage" class="alert-message">Changes saved successfully.</div>
+  </div>
+
+  <!-- Book Details Container -->
+  <div class="book-details-container">
+    <!-- LEFT SIDE: Book Image -->
+    <div class="book-image-section">
+      <img id="bookCover" src="placeholder.jpg" alt="Book Cover" class="book-cover">
+      <!-- Hidden file input -->
+      <input type="file" id="imageInput" accept="image/*" hidden>
+    </div>
+
+    <!-- RIGHT SIDE: Book Info -->
+    <div class="book-info-section">
+      <form id="bookForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Name:</label>
+            <input type="text" id="name">
+          </div>
+          <div class="form-row">
+            <label>Author:</label>
+            <input type="text" id="author">
+          </div>
+          <div class="form-row">
+            <label>Publisher:</label>
+            <input type="text" id="publisher">
+          </div>
+          <div class="form-row">
+            <label>Category:</label>
+            <input type="text" id="category">
+          </div>
+          <div class="form-row">
+            <label>Genre:</label>
+            <input type="text" id="genre">
+          </div>
+          <div class="form-row">
+            <label>Published Date:</label>
+            <input type="date" id="publishDate">
+          </div>
+          <div class="form-row">
+            <label>Language:</label>
+            <input type="text" id="language">
+          </div>
+          <div class="form-row">
+            <label>Page Count:</label>
+            <input type="number" id="pages">
+          </div>
+          <div class="form-row">
+            <label>Copies Available:</label>
+            <input type="number" id="copies">
+          </div>
+        </div>
+
+        <!-- Change Cover Button aligned under the form -->
+        <div class="image-buttons">
+          <button class="change-btn" id="changeBtn">Change Image</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Description Section -->
+  <div class="description-section">
+    <label>Description:</label>
+    <textarea id="description" rows="5"></textarea>
+
+    <div class="form-actions">
+      <button type="button" class="save-btn" id="saveBtn">Save</button>
+      <button type="button" class="cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <script src="editbook.js"></script>
+</body>
+</html>
