@@ -5,6 +5,7 @@ This document describes all available API endpoints for the Library Management S
 Base URL: `http://localhost:5000`
 
 ## Table of Contents
+- [Authentication](#authentication)
 - [Users](#users)
 - [Authors](#authors)
 - [Publishers](#publishers)
@@ -13,6 +14,179 @@ Base URL: `http://localhost:5000`
 - [Reservations](#reservations)
 - [Reviews](#reviews)
 - [Transactions](#transactions)
+
+---
+
+## Authentication
+
+### POST /api/signup
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "securepassword123",
+  "adminIndicator": false
+}
+```
+
+**Required Fields:** username, email, password
+
+**Optional Fields:**
+- `adminIndicator` (boolean): Set to `true` to create an admin user. Defaults to `false` if not provided.
+
+**Response (Success - 201):**
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "user_id": "ABC123XYZ9"
+}
+```
+
+**Response (Error - 400):**
+```json
+{
+  "success": false,
+  "message": "Username, email, and password are required"
+}
+```
+
+**Response (Error - 409):**
+```json
+{
+  "success": false,
+  "message": "Username or email already exists"
+}
+```
+
+**Note:** The UserId is automatically generated as a unique 10-character alphanumeric string.
+
+---
+
+### POST /api/login
+Authenticate a user and log them in.
+
+**Request Body:**
+```json
+{
+  "username": "john_doe",
+  "password": "securepassword123"
+}
+```
+
+**Required Fields:** username, password
+
+**Response (Success - 200):**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "user": {
+    "userid": "ABC123XYZ9",
+    "username": "john_doe",
+    "email": "john@example.com",
+    "creationtime": "2024-01-01T00:00:00",
+    "adminindicator": false
+  }
+}
+```
+
+**Note:** The response includes all user data from the Users table except the password hash (which is excluded for security reasons).
+
+**Response (Error - 400):**
+```json
+{
+  "success": false,
+  "message": "Username and password are required"
+}
+```
+
+**Response (Error - 401):**
+```json
+{
+  "success": false,
+  "message": "Invalid username or password"
+}
+```
+
+---
+
+### POST /api/change-password
+Change a user's password.
+
+**Request Body:**
+```json
+{
+  "username": "john_doe",
+  "currentPassword": "oldpassword123",
+  "newPassword": "newpassword456"
+}
+```
+
+**Required Fields:** username, currentPassword, newPassword
+
+**Validation:**
+- New password must be at least 8 characters long
+
+**Response (Success - 200):**
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+**Response (Error - 400):**
+```json
+{
+  "success": false,
+  "message": "All fields are required"
+}
+```
+
+or
+
+```json
+{
+  "success": false,
+  "message": "New password must be at least 8 characters long"
+}
+```
+
+**Response (Error - 401):**
+```json
+{
+  "success": false,
+  "message": "Current password is incorrect"
+}
+```
+
+**Response (Error - 404):**
+```json
+{
+  "success": false,
+  "message": "User not found"
+}
+```
+
+---
+
+### GET /api/health
+Health check endpoint to verify API and database connectivity.
+
+**Response (Success - 200):**
+```json
+{
+  "status": "healthy",
+  "message": "Library Management System API is running",
+  "database": "connected"
+}
+```
+
+**Note:** The `database` field will be `"connected"` if the database connection is successful, or `"disconnected"` if it fails.
 
 ---
 
@@ -461,6 +635,7 @@ All endpoints return errors in the following format:
 - `200` - Success
 - `201` - Created
 - `400` - Bad Request (missing/invalid data)
+- `401` - Unauthorized (invalid credentials)
 - `404` - Not Found
 - `409` - Conflict (duplicate entry)
 - `500` - Internal Server Error
@@ -468,6 +643,55 @@ All endpoints return errors in the following format:
 ---
 
 ## Testing with cURL
+
+### Example: User Signup
+```bash
+curl -X POST http://localhost:5000/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "email": "john@example.com",
+    "password": "securepassword123"
+  }'
+```
+
+### Example: Admin Signup
+```bash
+curl -X POST http://localhost:5000/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin_user",
+    "email": "admin@example.com",
+    "password": "adminpassword123",
+    "adminIndicator": true
+  }'
+```
+
+### Example: User Login
+```bash
+curl -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "password": "securepassword123"
+  }'
+```
+
+### Example: Change Password
+```bash
+curl -X POST http://localhost:5000/api/change-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "currentPassword": "oldpassword123",
+    "newPassword": "newpassword456"
+  }'
+```
+
+### Example: Health Check
+```bash
+curl http://localhost:5000/api/health
+```
 
 ### Example: Create an Author
 ```bash

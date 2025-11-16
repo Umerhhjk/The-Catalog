@@ -47,6 +47,11 @@ def signup():
         username = data['username']
         email = data['email']
         password = data['password']
+        admin_indicator = data.get('adminIndicator', False)
+        
+        if isinstance(admin_indicator, str):
+            admin_indicator = admin_indicator.lower() in ('true', '1', 'yes')
+        admin_indicator = bool(admin_indicator)
         
         password_hash = generate_password_hash(password)
         
@@ -74,7 +79,7 @@ def signup():
         
         cur.execute(
             'INSERT INTO Users (UserId, Username, Email, PasswordHash, AdminIndicator) VALUES (%s, %s, %s, %s, %s) RETURNING UserId',
-            (user_id, username, email, password_hash, False)
+            (user_id, username, email, password_hash, admin_indicator)
         )
         returned_user_id = cur.fetchone()[0]
         conn.commit()
@@ -119,7 +124,7 @@ def login():
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         cur.execute(
-            'SELECT UserId, Username, Email, PasswordHash FROM Users WHERE Username = %s',
+            'SELECT * FROM Users WHERE Username = %s',
             (username,)
         )
         user = cur.fetchone()
@@ -138,14 +143,13 @@ def login():
                 'message': 'Invalid username or password'
             }), 401
         
+        user_data = dict(user)
+        user_data.pop('passwordhash', None)
+        
         return jsonify({
             'success': True,
             'message': 'Login successful',
-            'user': {
-                'id': user['userid'],
-                'username': user['username'],
-                'email': user['email']
-            }
+            'user': user_data
         }), 200
         
     except Exception as e:
