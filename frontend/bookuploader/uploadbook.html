@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Book</title>
+  <link rel="stylesheet" href="uploadbook.css">
+</head>
+<body>
+
+  <!-- REMOVE the old button completely -->
+  <!-- <button id="openPopupBtn">Upload New Book</button> -->
+
+  <!-- Popup Overlay (starts visible because dashboard will show it as-is) -->
+  <div id="popupOverlay" class="popup-overlay">
+    <div class="popup-content">
+      <h2>Upload New Book</h2>
+
+      <div class="book-details-container">
+        <!-- LEFT SIDE: Book Image -->
+        <div class="book-image-section">
+          <img id="bookCover" src="" alt="No Image" class="book-cover">
+          <input type="text" id="imgLink" placeholder="Enter image URL" />
+        </div>
+
+        <!-- RIGHT SIDE: Book Info -->
+        <div class="book-info-section">
+          <form id="bookForm">
+            <div class="form-grid">
+              <div class="form-row"><label>Name:</label><input type="text" id="name"></div>
+              <div class="form-row"><label>Author:</label><input type="text" id="author"></div>
+              <div class="form-row"><label>Publisher:</label><input type="text" id="publisher"></div>
+              <div class="form-row"><label>Category:</label><input type="text" id="category"></div>
+              <div class="form-row"><label>Genre:</label><input type="text" id="genre"></div>
+              <div class="form-row"><label>Published Date:</label><input type="date"  id="publishDate"></div>
+              <div class="form-row"><label>Language:</label><input type="text" id="language"></div>
+              <div class="form-row"><label>Page Count:</label><input type="number" id="pages"></div>
+              <div class="form-row"><label>Copies Available:</label><input type="number" id="copies"></div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Description Section -->
+      <div class="description-section">
+        <label>Description:</label>
+        <textarea id="description" rows="5"></textarea>
+
+        <div class="form-actions">
+          <button type="button" class="save-btn" id="uploadBtn">Upload</button>
+          <button type="button" class="cancel-btn" id="cancelBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>upload
+
+  <script src="uploadbook.js"></script>
+</body>
+
+</html>

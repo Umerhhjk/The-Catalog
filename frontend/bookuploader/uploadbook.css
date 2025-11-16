@@ -1,0 +1,162 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+  background-color: #1e1e1e;
+  color: #f1f1f1;
+  margin: 0;
+  padding: 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Popup overlay */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.popup-overlay.hidden {
+  display: none;
+}
+
+.popup-content {
+  background-color: #2b2b2b;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 900px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.book-details-container {
+  display: flex;
+  gap: 30px;
+  margin-top: 10px;
+  align-items: flex-start;
+}
+
+.book-image-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.book-cover {
+  width: 200px;
+  height: 280px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background-color: #444;
+}
+
+#imgLink {
+  margin-top: 10px;
+  padding: 6px;
+  width: 200px;
+  border-radius: 5px;
+  border: 1px solid #555;
+  background-color: #3b3b3b;
+  color: white;
+}
+
+.book-info-section {
+  flex: 1;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px 20px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row label {
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #ddd;
+}
+
+.form-row input {
+  padding: 8px;
+  background-color: #3b3b3b;
+  border: 1px solid #555;
+  border-radius: 5px;
+  color: white;
+}
+
+/* Description Section */
+.description-section {
+  background-color: #2b2b2b;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 15px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.description-section label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 8px;
+  color: #ddd;
+}
+
+.description-section textarea {
+  width: 100%;
+  resize: none;
+  padding: 10px;
+  background-color: #3b3b3b;
+  border: 1px solid #555;
+  border-radius: 5px;
+  color: white;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+/* Upload / Cancel Buttons */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+  gap: 10px;
+}
+
+.save-btn, .cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.cancel-btn {
+  background-color: #555;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+.cancel-btn:hover {
+  background-color: #666;
+}
+

@@ -518,3 +518,119 @@ if (stored) {
 }
 
 document.addEventListener('DOMContentLoaded', mount);
+
+
+// =====================
+// UPLOAD BUTTON OVERLAY
+// =====================
+
+// 1. Create overlay element (hidden by default)
+const uploadOverlay = document.createElement('div');
+uploadOverlay.id = 'uploadOverlay';
+uploadOverlay.style.position = 'fixed';
+uploadOverlay.style.top = '0';
+uploadOverlay.style.left = '0';
+uploadOverlay.style.width = '100vw';
+uploadOverlay.style.height = '100vh';
+uploadOverlay.style.background = 'rgba(0,0,0,0.65)';
+uploadOverlay.style.display = 'none';
+uploadOverlay.style.zIndex = '99999';
+uploadOverlay.style.backdropFilter = 'blur(4px)';
+
+// Create iframe to load your form
+const uploaderFrame = document.createElement('iframe');
+uploaderFrame.src = '../bookuploader/uploadbook.html';
+uploaderFrame.style.width = '60%';
+uploaderFrame.style.height = '95%';
+uploaderFrame.style.border = 'none';
+uploaderFrame.style.borderRadius = '0px';
+uploaderFrame.style.position = 'absolute';
+uploaderFrame.style.top = '50%';
+uploaderFrame.style.left = '50%';
+uploaderFrame.style.transform = 'translate(-50%, -50%)';
+uploaderFrame.style.background = '#fff';
+
+// 3. Close overlay on background click
+uploadOverlay.addEventListener('click', (e) => {
+  if (e.target === uploadOverlay) uploadOverlay.style.display = 'none';
+});
+
+// 4. Add iframe inside overlay
+uploadOverlay.appendChild(uploaderFrame);
+document.body.appendChild(uploadOverlay);
+
+// 5. Trigger → Show overlay
+document.getElementById("addBookBtn").addEventListener("click", () => {
+  uploadOverlay.style.display = 'block';
+});
+
+// 6. Listen for messages from iframe (Save / Cancel)
+window.addEventListener('message', (event) => {
+  const { action, data } = event.data || {};
+
+  if (action === 'save-btn') {
+    uploadOverlay.style.display = 'none';
+    if (data) books.push(data); // Add book to your data
+    renderDashboard();          // Refresh dashboard
+  }
+
+  if (action === 'cancel-btn') {
+    uploadOverlay.style.display = 'none';
+  }
+});
+
+// ========================
+// Toast Function
+// ========================
+function showToast(message) {
+  // Create container if not present
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<strong>${message}</strong>`;
+
+  // Append toast to container
+  container.appendChild(toast);
+
+  // Force reflow so animation triggers
+  void toast.offsetWidth;
+
+  // Remove toast after 4s
+  setTimeout(() => {
+    toast.remove();
+  }, 4000);
+}
+
+// ========================
+// Overlay and Upload Handling
+// ========================
+
+// Assuming uploadOverlay is already created and addBookBtn exists
+document.getElementById("addBookBtn").addEventListener("click", () => {
+  uploadOverlay.style.display = 'block';
+});
+
+// Listen for messages from iframe
+window.addEventListener('message', (event) => {
+  const { action, data } = event.data || {};
+
+  if (action === 'save-btn') {
+    uploadOverlay.style.display = 'none';
+    if (data) books.push(data);
+    renderDashboard();
+
+    // Show toast alert
+    showToast('Book added successfully!');
+  }
+
+  if (action === 'cancel-btn') {
+    uploadOverlay.style.display = 'none';
+  }
+});
