@@ -402,7 +402,7 @@ def create_book():
     """Create a new book"""
     try:
         data = request.get_json()
-        required_fields = ['Name', 'authorID', 'category', 'genre', 'publishdate', 'language', 'pagecount', 'copiesavailable', 'ratedType']
+        required_fields = ['Name', 'authorName', 'category', 'genre', 'publishdate', 'language', 'pagecount', 'copiesavailable', 'ratedType']
         
         for field in required_fields:
             if field not in data:
@@ -414,6 +414,38 @@ def create_book():
         
         cur = conn.cursor()
         
+        # Get or create author
+        cur.execute('SELECT AuthorId FROM Author WHERE AuthorName = %s', (data['authorName'],))
+        author_result = cur.fetchone()
+        
+        if not author_result:
+            # Author doesn't exist, create it
+            cur.execute('''
+                INSERT INTO Author (AuthorName, AuthorBio)
+                VALUES (%s, %s)
+                RETURNING AuthorId
+            ''', (data['authorName'], None))
+            author_id = cur.fetchone()[0]
+        else:
+            author_id = author_result[0]
+        
+        # Get or create publisher if provided
+        publisher_id = None
+        if data.get('publisherName'):
+            cur.execute('SELECT PublisherId FROM Publisher WHERE PublisherName = %s', (data['publisherName'],))
+            publisher_result = cur.fetchone()
+            
+            if not publisher_result:
+                # Publisher doesn't exist, create it
+                cur.execute('''
+                    INSERT INTO Publisher (PublisherName)
+                    VALUES (%s)
+                    RETURNING PublisherId
+                ''', (data['publisherName'],))
+                publisher_id = cur.fetchone()[0]
+            else:
+                publisher_id = publisher_result[0]
+        
         publish_date = data['publishdate']
         if isinstance(publish_date, str):
             publish_date = datetime.strptime(publish_date, '%Y-%m-%d').date()
@@ -424,10 +456,10 @@ def create_book():
             RETURNING BookId
         ''', (
             data['Name'],
-            data['authorID'],
+            author_id,
             data['category'],
             data['genre'],
-            data.get('publisherID'),
+            publisher_id,
             publish_date,
             data['language'],
             data['pagecount'],

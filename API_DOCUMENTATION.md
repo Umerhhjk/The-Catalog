@@ -398,10 +398,10 @@ Create a new book.
 ```json
 {
   "Name": "Harry Potter and the Philosopher's Stone",
-  "authorID": 1,
+  "authorName": "J.K. Rowling",
   "category": "Fiction",
   "genre": "Fantasy",
-  "publisherID": 1,
+  "publisherName": "Bloomsbury Publishing",
   "publishdate": "1997-06-26",
   "language": "English",
   "pagecount": 223,
@@ -412,9 +412,15 @@ Create a new book.
 }
 ```
 
-**Required Fields:** Name, authorID, category, genre, publishdate, language, pagecount, copiesavailable, ratedType
+**Required Fields:** Name, authorName, category, genre, publishdate, language, pagecount, copiesavailable, ratedType
 
-**Note:** `publishdate` should be in format `YYYY-MM-DD`
+**Optional Fields:** publisherName, imglink, description
+
+**Note:** 
+- `publishdate` should be in format `YYYY-MM-DD`
+- `authorName` is provided as a string. If the author does not exist in the database, it will be automatically created.
+- `publisherName` is provided as a string. If the publisher does not exist in the database and is provided, it will be automatically created.
+- Author names are unique, so providing the same author name will reference the existing author.
 
 ### PUT /api/books/<book_id>
 Update an existing book.

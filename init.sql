@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS Users (
 -- 2) Author Table
 CREATE TABLE IF NOT EXISTS Author (
     AuthorId SERIAL PRIMARY KEY,
-    AuthorName VARCHAR(50) NOT NULL,
+    AuthorName VARCHAR(50) NOT NULL UNIQUE,
     AuthorBio VARCHAR(500)
 );
 
