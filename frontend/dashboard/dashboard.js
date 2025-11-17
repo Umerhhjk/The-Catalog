@@ -1,38 +1,72 @@
-// Simple static book data (frontend only)
-const books = [
-  { id: 'zen-speaks', title: 'Zen Speaks' },
-  { id: 'gunsmith', title: 'The Gunsmith' },
-  { id: 'blackout', title: 'Blackout' },
-  { id: 'newjack', title: 'Newjack' },
-  { id: '1984', title: '1984' },
-  { id: 'yellow-world', title: 'The Yellow World' },
-  { id: 'liberty', title: 'On Liberty' },
-  { id: 'anna-karenina', title: 'Anna Karenina' }
-];
+
+let books = [];
+let categories = []; 
+
+async function loadCategories() {
+  try {
+    const res = await fetch("http://localhost:5000/api/books/categories");
+    const data = await res.json();
+
+    if (data.success && Array.isArray(data.categories)) {
+      categories = data.categories;
+    } else {
+      categories = [];
+    }
+  } catch (err) {
+    console.error("Failed to load categories:", err);
+    categories = [];
+  }
+}
+
+
+async function loadBooks() {
+  try {
+    const res = await fetch("http://localhost:5000/api/books");
+    const data = await res.json();
+
+    if (data.success && data.books) {
+      books = data.books.map(b => ({
+        id: b.bookid,
+        title: b.name,
+        img: b.imglink || "",
+        category: b.category
+      }));
+    } else {
+      books = [];
+    }
+  } catch (err) {
+    console.error("Failed to load books:", err);
+    books = [];
+  }
+}
 
 function createBookCard(book, idx) {
   const link = document.createElement('a');
   link.className = 'book-card';
   link.href = `dashboard.html?id=${encodeURIComponent(book.id)}`;
+
   link.innerHTML = `
     <span class="badge">#${(idx % 9) + 1}</span>
     <div class="cover-placeholder" aria-hidden="true">
-      <span class="cover-initial">${book.title.slice(0,1)}</span>
+      ${book.img
+        ? `<img src="${book.img}" alt="${book.title}" class="book-cover-img">`
+        : `<span class="cover-initial">${book.title.slice(0,1)}</span>`}
     </div>
     <div class="book-meta">
       <span class="meta-dot"></span>
       <div class="book-title">${book.title}</div>
-      <i class="fa-solid fa-ellipsis-vertical menu"></i>
     </div>`;
+
   link.addEventListener('click', (e) => {
     e.preventDefault();
     try { localStorage.setItem('selectedBook', JSON.stringify(book)); } catch (e) {}
     navigateTo(`?id=${encodeURIComponent(book.id)}`);
   });
+
   return link;
 }
 
-function fadeOutIn(callback){
+function fadeOutIn(callback) {
   const main = document.getElementById('mainArea');
   main.style.opacity = '0';
   main.style.transform = 'translateY(6px)';
@@ -43,76 +77,73 @@ function fadeOutIn(callback){
   }, 180);
 }
 
-// --- Replace renderDashboard and renderBookDetails with these versions ---
+/* =====================================================
+   CORRECTED renderDashboard — ONE PANEL PER CATEGORY
+   ===================================================== */
 
-function renderDashboard(){
+function renderDashboard() {
   const main = document.getElementById('mainArea');
 
-  // Remove detailsPanel only if it exists (we'll recreate on demand)
-  const existingDetails = document.getElementById('detailsPanel');
-  if (existingDetails) existingDetails.remove();
+  // WIPE mainArea completely — removes iframe, detailsPanel, leftover panels, everything
+  main.innerHTML = '';
 
-  // Ensure dashboard panels exist (if you accidentally cleared main earlier they will need to be re-created
-  // — but in this approach we never wipe main, so this is just safe-guarding).
-  let continuePanel = document.getElementById('continuePanel');
-  let recentPanel = document.getElementById('recentPanel');
+  // Build fresh category panels
+  categories.forEach(category => {
+    const panel = document.createElement('section');
+    panel.className = 'panel category-panel';
+    panel.style.marginBottom = '14px';
 
-  // If panels are missing (edge case), create simple containers
-  if (!continuePanel) {
-    continuePanel = document.createElement('div');
-    continuePanel.id = 'continuePanel';
-    main.appendChild(continuePanel);
-  }
-  if (!recentPanel) {
-    recentPanel = document.createElement('div');
-    recentPanel.id = 'recentPanel';
-    main.appendChild(recentPanel);
-  }
+    panel.innerHTML = `
+      <div class="row-head">
+        <div class="row-title">${category}</div>
+      </div>
+      <div class="carousel"></div>
+    `;
 
-  // Populate lists (clear first)
-  const continueRow = document.getElementById('continueRow') || (() => {
-    const r = document.createElement('div'); r.id = 'continueRow'; continuePanel.appendChild(r); return r;
-  })();
-  continueRow.innerHTML = '';
-  books.slice(0, 8).forEach((b, i) => continueRow.appendChild(createBookCard(b, i)));
+    const row = panel.querySelector('.carousel');
+    const filteredBooks = books.filter(b => b.category === category);
 
-  const recentGrid = document.getElementById('recentGrid') || (() => {
-    const g = document.createElement('div'); g.id = 'recentGrid'; recentPanel.appendChild(g); return g;
-  })();
-  recentGrid.innerHTML = '';
-  books.slice(0, 8).forEach((b, i) => recentGrid.appendChild(createBookCard(b, i)));
+    filteredBooks.forEach((book, i) => {
+      row.appendChild(createBookCard(book, i));
+    });
 
-  // Navigate to dashboard view using ViewManager
-  if (typeof viewManager !== 'undefined') {
-    viewManager.navigateTo('dashboard');
+    main.appendChild(panel);
+  });
+
+  // Tell viewManager we switched back to dashboard
+  if (typeof viewManager !== "undefined") {
+    viewManager.navigateTo("dashboard");
   }
 }
+
+
+/* ============================================
+   SAME renderBookDetails YOU PROVIDED
+   ============================================ */
 
 function renderBookDetails(book) {
   const main = document.getElementById('mainArea');
 
-  // Create (or reuse) detailsPanel inside mainArea
-  let details = document.getElementById('detailsPanel');
-  if (!details) {
-    details = document.createElement('div');
-    details.id = 'detailsPanel';
-    details.style.width = '100%';
-    details.style.minHeight = '400px';
-    main.appendChild(details);
-  } else {
-    details.innerHTML = ''; // clear previous
-  }
+  // FIX: Create a history entry so the Back button works
+  history.pushState({ id: book.id }, "", `?id=${encodeURIComponent(book.id)}`);
 
-  // Save selected book (optional) and current user for bookdetails.js
+  // Completely replace dashboard content
+  main.innerHTML = '';
+
+  // Store book for bookdetails.html
   try { 
     localStorage.setItem('selectedBook', JSON.stringify(book)); 
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     localStorage.setItem('selectedUser', JSON.stringify(currentUser));
-  } catch (e) {
-    console.warn('Failed to store book/user info:', e);
-  }
+  } catch (e) {}
 
-  // Use iframe to load the book details page
+  // Create panel
+  const details = document.createElement('div');
+  details.id = 'detailsPanel';
+  details.style.width = '100%';
+  details.style.minHeight = '400px';
+
+  // Create iframe
   const iframe = document.createElement('iframe');
   iframe.title = 'Book Details';
   iframe.src = `../bookdetails/bookdetails.html?id=${encodeURIComponent(book.id)}`;
@@ -122,8 +153,9 @@ function renderBookDetails(book) {
   iframe.style.overflow = 'hidden';
 
   details.appendChild(iframe);
+  main.appendChild(details);
 
-  // Navigate to bookdetails view using ViewManager
+  // Tell viewManager we switched
   if (typeof viewManager !== 'undefined') {
     viewManager.navigateTo('bookdetails');
   }
@@ -131,24 +163,25 @@ function renderBookDetails(book) {
 
 
 
+
+
 function navigateTo(search) {
   const params = new URLSearchParams(search.startsWith('?') ? search.substring(1) : search);
   const id = params.get('id');
 
-  // Always push state, even for dashboard view
-  history.pushState({ id: id || null }, '', `${location.pathname}${search || ''}`);
+  if (id) {
+    // classic navigation
+    const book = books.find(b => b.id === id)
+             || JSON.parse(localStorage.getItem('selectedBook') || 'null')
+             || { id, title: id.replace(/-/g, ' ') };
 
-  fadeOutIn(() => {
-    if (id) {
-      const match =
-        books.find(b => b.id === id) ||
-        JSON.parse(localStorage.getItem('selectedBook') || 'null') ||
-        { id, title: id.replace(/-/g, ' ') };
-      renderBookDetails(match);
-    } else {
-      renderDashboard();
-    }
-  });
+    renderBookDetails(book);
+    return;
+  }
+
+  // dashboard view
+  history.pushState({ id: null }, '', `${location.pathname}`);
+  renderDashboard();
 }
 
 
@@ -184,17 +217,19 @@ if (stored) {
     profileBtn.style.display = '';
     logoutBtn.style.display = '';
   }
-    } else {
-      // No user logged in: hide all
-      const addBookBtn = document.getElementById('addBookBtn');
-      const settingsBtn = document.getElementById('settingsBtn');
-      const profileBtn = document.getElementById('profileBtn');
-      const logoutBtn = document.getElementById('logoutBtn');
-      addBookBtn.style.display = 'none';
-      settingsBtn.style.display = 'none';
-      profileBtn.style.display = 'none';
-      logoutBtn.style.display = 'none';
+
+  // Attach logout AFTER visibility decisions
+   const logoutButton = document.getElementById('logoutBtn');
+   if (logoutButton) {
+     logoutButton.onclick = () => {
+    try { localStorage.removeItem('currentUser'); } catch (e) {}
+      window.location.replace('../index.html');
+    };
     }
+
+
+
+    } else {  }
   } catch (e) {}
 
   const initialParams = new URLSearchParams(window.location.search);
@@ -269,10 +304,7 @@ if (stored) {
         const recentPanel = document.getElementById('recentPanel');
         if (continuePanel) continuePanel.style.display = '';
         if (recentPanel) recentPanel.style.display = '';
-      } else if (viewName === 'bookdetails') {
-        const detailsPanel = document.getElementById('detailsPanel');
-        if (detailsPanel) detailsPanel.style.display = '';
-      } else if (viewName === 'settings') {
+      }  else if (viewName === 'settings') {
         const settingsPanel = document.getElementById('settingsPanel');
         if (settingsPanel) settingsPanel.style.display = 'block';
       }
@@ -283,10 +315,7 @@ if (stored) {
         const recentPanel = document.getElementById('recentPanel');
         if (continuePanel) continuePanel.style.display = 'none';
         if (recentPanel) recentPanel.style.display = 'none';
-      } else if (viewName === 'bookdetails') {
-        const detailsPanel = document.getElementById('detailsPanel');
-        if (detailsPanel) detailsPanel.style.display = 'none';
-      } else if (viewName === 'settings') {
+      }  else if (viewName === 'settings') {
         const settingsPanel = document.getElementById('settingsPanel');
         if (settingsPanel) settingsPanel.style.display = 'none';
       }
@@ -420,11 +449,6 @@ if (stored) {
   cancelEditBtn.addEventListener('click', exitEditMode);
   saveEditBtn.addEventListener('click', saveProfileChanges);
 
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    try { localStorage.removeItem('currentUser'); } catch(e) {}
-    window.location.replace('../index.html');
-  });
-
   // Change Password Functionality
   const changePasswordBtn = document.getElementById('changePasswordBtn');
   const currentPasswordInput = document.getElementById('currentPassword');
@@ -517,7 +541,15 @@ if (stored) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', mount);
+document.addEventListener('DOMContentLoaded', async () => {
+
+  await Promise.all([
+    loadCategories(),
+    loadBooks()
+  ]);
+
+  mount();
+});
 
 
 // =====================
@@ -565,13 +597,19 @@ document.getElementById("addBookBtn").addEventListener("click", () => {
 });
 
 // 6. Listen for messages from iframe (Save / Cancel)
-window.addEventListener('message', (event) => {
+window.addEventListener('message', async (event) => {
   const { action, data } = event.data || {};
 
   if (action === 'save-btn') {
     uploadOverlay.style.display = 'none';
-    if (data) books.push(data); // Add book to your data
-    renderDashboard();          // Refresh dashboard
+
+    // AUTO REFRESH DASHBOARD FROM API
+    await loadBooks();
+    await loadCategories();
+
+    renderDashboard();
+
+    showToast('Book added successfully!');
   }
 
   if (action === 'cancel-btn') {
@@ -618,19 +656,37 @@ document.getElementById("addBookBtn").addEventListener("click", () => {
 });
 
 // Listen for messages from iframe
-window.addEventListener('message', (event) => {
+window.addEventListener('message', async (event) => {
   const { action, data } = event.data || {};
 
   if (action === 'save-btn') {
     uploadOverlay.style.display = 'none';
-    if (data) books.push(data);
+
+    // AUTO REFRESH DASHBOARD FROM API
+    await loadBooks();
+    await loadCategories();
+
     renderDashboard();
 
-    // Show toast alert
     showToast('Book added successfully!');
   }
 
   if (action === 'cancel-btn') {
     uploadOverlay.style.display = 'none';
+  }
+});
+
+window.addEventListener("message", (event) => {
+  if (event.data && event.data.action === "close-bookdetails") {
+
+    // Completely wipe bookdetails iframe
+    const main = document.getElementById("mainArea");
+    main.innerHTML = "";
+
+    // Render dashboard directly
+    renderDashboard();
+
+    // Fix URL
+    history.replaceState({ id: null }, "", location.pathname);
   }
 });

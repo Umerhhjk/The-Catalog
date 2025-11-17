@@ -283,3 +283,6 @@ function updateAdminButton() {
 updateAdminButton();
 
 
+document.getElementById("back-to-dashboard").addEventListener("click", () => {
+  window.parent.postMessage({ action: "close-bookdetails" }, "*");
+});

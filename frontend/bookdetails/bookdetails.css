@@ -319,3 +319,21 @@ body {
 .title-row .book-title {
   margin-bottom: 0;
 }
+
+.back-btn {
+  background: transparent;          /* match parent background */
+  color: #f0f0f0;                   /* match text color */
+  border: 2px solid var(--grey);    /* similar outline style */
+  border-radius: 8px;               /* match stylus button */
+  padding: 10px 20px;               /* same size as admin-button */
+  font-size: 1.2em;                 /* same icon size */
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  margin-right: 10px;               /* spacing before stylus */
+  margin-left: 20px;
+}
+
+.back-btn:hover {
+  background: rgba(255,255,255,0.08);
+  transform: scale(1.05);
+}
