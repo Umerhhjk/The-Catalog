@@ -391,6 +391,68 @@ GET /api/books
 GET /api/books?book_id=1
 ```
 
+### GET /api/books/categories
+Get all distinct book categories.
+
+**Example:**
+```bash
+GET /api/books/categories
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 3,
+  "categories": ["Fiction", "Fantasy", "Science Fiction"]
+}
+```
+
+### GET /api/books/search
+Search for books by name (case-insensitive partial match).
+
+**Query Parameters:**
+- `name` (required): The book name or partial name to search for
+
+**Example:**
+```bash
+GET /api/books/search?name=Harry
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "count": 2,
+  "books": [
+    {
+      "bookid": 1,
+      "name": "Harry Potter and the Philosopher's Stone",
+      "authorid": 1,
+      "category": "Fiction",
+      "genre": "Fantasy",
+      "publisherid": 1,
+      "publishdate": "1997-06-26",
+      "language": "English",
+      "pagecount": 223,
+      "copiesavailable": 10,
+      "imglink": "https://example.com/image.jpg",
+      "ratedtype": "PG",
+      "description": "A young wizard's journey..."
+    }
+  ]
+}
+```
+
+**Response (No matches):**
+```json
+{
+  "success": true,
+  "count": 0,
+  "books": []
+}
+```
+
 ### POST /api/books
 Create a new book.
 
@@ -545,6 +607,40 @@ Get all reviews or filter by book/user.
 GET /api/reviews
 GET /api/reviews?book_id=1
 GET /api/reviews?book_id=1&user_id=USR1234567
+```
+
+### GET /api/reviews/rating/<book_id>
+Get the average rating for a specific book.
+
+**Path Parameters:**
+- `book_id` (required): The ID of the book
+
+**Example:**
+```bash
+GET /api/reviews/rating/1
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "book_id": 1,
+  "review_count": 5,
+  "average_rating": 4.4,
+  "min_rating": 3,
+  "max_rating": 5
+}
+```
+
+**Response (No reviews):**
+```json
+{
+  "success": true,
+  "book_id": 1,
+  "review_count": 0,
+  "average_rating": null,
+  "message": "No reviews found for this book"
+}
 ```
 
 ### POST /api/reviews

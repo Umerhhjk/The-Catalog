@@ -397,6 +397,58 @@ def get_books():
         print(f"Get books error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@crud_bp.route('/api/books/categories', methods=['GET'])
+def get_book_categories():
+    """Get all distinct book categories"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute('SELECT DISTINCT category FROM Books ORDER BY category')
+        categories = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        category_list = [cat['category'] for cat in categories]
+        
+        return jsonify({'success': True, 'count': len(category_list), 'categories': category_list}), 200
+        
+    except Exception as e:
+        print(f"Get book categories error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@crud_bp.route('/api/books/search', methods=['GET'])
+def search_books_by_name():
+    """Search for books by name"""
+    try:
+        book_name = request.args.get('name')
+        
+        if not book_name:
+            return jsonify({'success': False, 'message': 'Book name is required'}), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute('SELECT * FROM Books WHERE Name ILIKE %s ORDER BY Name', (f'%{book_name}%',))
+        books = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if not books:
+            return jsonify({'success': True, 'count': 0, 'books': []}), 200
+        
+        return jsonify({'success': True, 'count': len(books), 'books': books}), 200
+        
+    except Exception as e:
+        print(f"Search books by name error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @crud_bp.route('/api/books', methods=['POST'])
 def create_book():
     """Create a new book"""
@@ -419,7 +471,6 @@ def create_book():
         author_result = cur.fetchone()
         
         if not author_result:
-            # Author doesn't exist, create it
             cur.execute('''
                 INSERT INTO Author (AuthorName, AuthorBio)
                 VALUES (%s, %s)
@@ -436,7 +487,6 @@ def create_book():
             publisher_result = cur.fetchone()
             
             if not publisher_result:
-                # Publisher doesn't exist, create it
                 cur.execute('''
                     INSERT INTO Publisher (PublisherName)
                     VALUES (%s)
@@ -881,6 +931,54 @@ def get_reviews():
             
     except Exception as e:
         print(f"Get reviews error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@crud_bp.route('/api/reviews/rating/<int:book_id>', methods=['GET'])
+def get_book_average_rating(book_id):
+    """Get the average rating for a specific book"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute('''
+            SELECT 
+                BookID,
+                COUNT(*) as review_count,
+                ROUND(AVG(Rating)::numeric, 2) as average_rating,
+                MIN(Rating) as min_rating,
+                MAX(Rating) as max_rating
+            FROM Reviews
+            WHERE BookID = %s
+            GROUP BY BookID
+        ''', (book_id,))
+        
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not result:
+            return jsonify({
+                'success': True,
+                'book_id': book_id,
+                'review_count': 0,
+                'average_rating': None,
+                'message': 'No reviews found for this book'
+            }), 200
+        
+        return jsonify({
+            'success': True,
+            'book_id': result['bookid'],
+            'review_count': result['review_count'],
+            'average_rating': float(result['average_rating']) if result['average_rating'] else None,
+            'min_rating': result['min_rating'],
+            'max_rating': result['max_rating']
+        }), 200
+        
+    except Exception as e:
+        print(f"Get book average rating error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @crud_bp.route('/api/reviews', methods=['POST'])
