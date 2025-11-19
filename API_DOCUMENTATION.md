@@ -3,6 +3,7 @@
 This document describes all available API endpoints for the Library Management System.
 
 Base URL: `http://localhost:5000`
+Render URL: `https://library-backend-xkot.onrender.com`
 
 ## Table of Contents
 - [Authentication](#authentication)
