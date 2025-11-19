@@ -397,64 +397,12 @@ def get_books():
         print(f"Get books error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@crud_bp.route('/api/books/categories', methods=['GET'])
-def get_book_categories():
-    """Get all distinct book categories"""
-    try:
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
-        
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cur.execute('SELECT DISTINCT category FROM Books ORDER BY category')
-        categories = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        category_list = [cat['category'] for cat in categories]
-        
-        return jsonify({'success': True, 'count': len(category_list), 'categories': category_list}), 200
-        
-    except Exception as e:
-        print(f"Get book categories error: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@crud_bp.route('/api/books/search', methods=['GET'])
-def search_books_by_name():
-    """Search for books by name"""
-    try:
-        book_name = request.args.get('name')
-        
-        if not book_name:
-            return jsonify({'success': False, 'message': 'Book name is required'}), 400
-        
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
-        
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cur.execute('SELECT * FROM Books WHERE Name ILIKE %s ORDER BY Name', (f'%{book_name}%',))
-        books = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        if not books:
-            return jsonify({'success': True, 'count': 0, 'books': []}), 200
-        
-        return jsonify({'success': True, 'count': len(books), 'books': books}), 200
-        
-    except Exception as e:
-        print(f"Search books by name error: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 @crud_bp.route('/api/books', methods=['POST'])
 def create_book():
     """Create a new book"""
     try:
         data = request.get_json()
-        required_fields = ['Name', 'authorName', 'category', 'genre', 'publishdate', 'language', 'pagecount', 'copiesavailable', 'ratedType']
+        required_fields = ['Name', 'authorID', 'category', 'genre', 'publishdate', 'language', 'pagecount', 'copiesavailable', 'ratedType']
         
         for field in required_fields:
             if field not in data:
@@ -466,36 +414,6 @@ def create_book():
         
         cur = conn.cursor()
         
-        # Get or create author
-        cur.execute('SELECT AuthorId FROM Author WHERE AuthorName = %s', (data['authorName'],))
-        author_result = cur.fetchone()
-        
-        if not author_result:
-            cur.execute('''
-                INSERT INTO Author (AuthorName, AuthorBio)
-                VALUES (%s, %s)
-                RETURNING AuthorId
-            ''', (data['authorName'], None))
-            author_id = cur.fetchone()[0]
-        else:
-            author_id = author_result[0]
-        
-        # Get or create publisher if provided
-        publisher_id = None
-        if data.get('publisherName'):
-            cur.execute('SELECT PublisherId FROM Publisher WHERE PublisherName = %s', (data['publisherName'],))
-            publisher_result = cur.fetchone()
-            
-            if not publisher_result:
-                cur.execute('''
-                    INSERT INTO Publisher (PublisherName)
-                    VALUES (%s)
-                    RETURNING PublisherId
-                ''', (data['publisherName'],))
-                publisher_id = cur.fetchone()[0]
-            else:
-                publisher_id = publisher_result[0]
-        
         publish_date = data['publishdate']
         if isinstance(publish_date, str):
             publish_date = datetime.strptime(publish_date, '%Y-%m-%d').date()
@@ -506,10 +424,10 @@ def create_book():
             RETURNING BookId
         ''', (
             data['Name'],
-            author_id,
+            data['authorID'],
             data['category'],
             data['genre'],
-            publisher_id,
+            data.get('publisherID'),
             publish_date,
             data['language'],
             data['pagecount'],
@@ -738,6 +656,34 @@ def update_booking(booking_id):
         print(f"Update booking error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@crud_bp.route('/api/bookings/<int:booking_id>', methods=['DELETE'])
+def delete_booking(booking_id):
+    """Delete an existing booking"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cur = conn.cursor()
+        
+        cur.execute('SELECT BookingId FROM Bookings WHERE BookingId = %s', (booking_id,))
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Booking not found'}), 404
+        
+        cur.execute('DELETE FROM Bookings WHERE BookingId = %s RETURNING BookingId', (booking_id,))
+        deleted_booking_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Booking deleted successfully', 'booking_id': deleted_booking_id}), 200
+        
+    except Exception as e:
+        print(f"Delete booking error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # ==========================================RESERVATIONS TABLE CRUD==========================================
 
 @crud_bp.route('/api/reservations', methods=['GET'])
@@ -884,6 +830,34 @@ def update_reservation(reservation_id):
         print(f"Update reservation error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@crud_bp.route('/api/reservations/<int:reservation_id>', methods=['DELETE'])
+def delete_reservation(reservation_id):
+    """Delete an existing reservation"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cur = conn.cursor()
+        
+        cur.execute('SELECT ReservationId FROM Reservations WHERE ReservationId = %s', (reservation_id,))
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Reservation not found'}), 404
+        
+        cur.execute('DELETE FROM Reservations WHERE ReservationId = %s RETURNING ReservationId', (reservation_id,))
+        deleted_reservation_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Reservation deleted successfully', 'reservation_id': deleted_reservation_id}), 200
+        
+    except Exception as e:
+        print(f"Delete reservation error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # =========================================REVIEWS TABLE CRUD=========================================
 
 @crud_bp.route('/api/reviews', methods=['GET'])
@@ -931,54 +905,6 @@ def get_reviews():
             
     except Exception as e:
         print(f"Get reviews error: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@crud_bp.route('/api/reviews/rating/<int:book_id>', methods=['GET'])
-def get_book_average_rating(book_id):
-    """Get the average rating for a specific book"""
-    try:
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
-        
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cur.execute('''
-            SELECT 
-                BookID,
-                COUNT(*) as review_count,
-                ROUND(AVG(Rating)::numeric, 2) as average_rating,
-                MIN(Rating) as min_rating,
-                MAX(Rating) as max_rating
-            FROM Reviews
-            WHERE BookID = %s
-            GROUP BY BookID
-        ''', (book_id,))
-        
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        
-        if not result:
-            return jsonify({
-                'success': True,
-                'book_id': book_id,
-                'review_count': 0,
-                'average_rating': None,
-                'message': 'No reviews found for this book'
-            }), 200
-        
-        return jsonify({
-            'success': True,
-            'book_id': result['bookid'],
-            'review_count': result['review_count'],
-            'average_rating': float(result['average_rating']) if result['average_rating'] else None,
-            'min_rating': result['min_rating'],
-            'max_rating': result['max_rating']
-        }), 200
-        
-    except Exception as e:
-        print(f"Get book average rating error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @crud_bp.route('/api/reviews', methods=['POST'])
