@@ -512,6 +512,7 @@ def get_bookings():
         booking_id = request.args.get('booking_id')
         user_id = request.args.get('user_id')
         book_id = request.args.get('book_id')
+        pending = request.args.get('pending')
         
         conn = get_db_connection()
         if not conn:
@@ -537,6 +538,12 @@ def get_bookings():
             return jsonify({'success': True, 'count': len(bookings), 'bookings': bookings}), 200
         elif book_id:
             cur.execute('SELECT * FROM Bookings WHERE BookId = %s', (book_id,))
+            bookings = cur.fetchall()
+            cur.close()
+            conn.close()
+            return jsonify({'success': True, 'count': len(bookings), 'bookings': bookings}), 200
+        elif pending and pending in ['1', 'true', 'True']:
+            cur.execute('SELECT * FROM Bookings WHERE pendingReturnIndicator = TRUE')
             bookings = cur.fetchall()
             cur.close()
             conn.close()
@@ -592,6 +599,15 @@ def create_booking():
         ))
         
         booking_id = cur.fetchone()[0]
+        # Side-effects: if a reservation exists for this user/book, delete it and log a reserved transaction
+        cur.execute('SELECT ReservationId FROM Reservations WHERE UserId = %s AND BookId = %s', (data['UserId'], data['BookId']))
+        res = cur.fetchone()
+        if res:
+            cur.execute('DELETE FROM Reservations WHERE ReservationId = %s', (res[0],))
+            cur.execute('''
+                INSERT INTO TransactionHistory (UserId, BookId, TransactionDate, ReservedIndicator)
+                VALUES (%s, %s, %s, %s)
+            ''', (data['UserId'], data['BookId'], datetime.now(), True))
         conn.commit()
         cur.close()
         conn.close()
@@ -647,6 +663,26 @@ def update_booking(booking_id):
         cur.execute(query, values)
         updated_booking_id = cur.fetchone()[0]
         conn.commit()
+        
+        # After update, check if booking should be moved to TransactionHistory
+        cur.execute('SELECT CurrentlyBookedIndicator, pendingReturnIndicator, UserId, BookId FROM Bookings WHERE BookingId = %s', (updated_booking_id,))
+        row = cur.fetchone()
+        if row:
+            currently_booked = row[0]
+            pending_return = row[1]
+            uid = row[2]
+            bid = row[3]
+
+            if (not currently_booked) and (not pending_return):
+                # Move to transactions (ReservedIndicator = False)
+                transaction_date = datetime.now()
+                cur.execute('''
+                    INSERT INTO TransactionHistory (UserId, BookId, TransactionDate, ReservedIndicator)
+                    VALUES (%s, %s, %s, %s)
+                ''', (uid, bid, transaction_date, False))
+                # Delete the booking record
+                cur.execute('DELETE FROM Bookings WHERE BookingId = %s', (updated_booking_id,))
+                conn.commit()
         cur.close()
         conn.close()
         
@@ -683,6 +719,7 @@ def delete_booking(booking_id):
     except Exception as e:
         print(f"Delete booking error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 # ==========================================RESERVATIONS TABLE CRUD==========================================
 
@@ -755,6 +792,8 @@ def create_reservation():
         if isinstance(reservation_date, str):
             reservation_date = datetime.strptime(reservation_date, '%Y-%m-%d %H:%M:%S')
         
+        print(f"DEBUG: Creating reservation - UserId: {data['UserId']}, BookId: {data['BookId']}")
+        
         cur.execute('''
             INSERT INTO Reservations (UserId, BookId, ReservationDate)
             VALUES (%s, %s, %s)
@@ -767,12 +806,23 @@ def create_reservation():
         
         reservation_id = cur.fetchone()[0]
         conn.commit()
+        print(f"DEBUG: Reservation created with ID: {reservation_id}")
+        
+        # Verify it was actually saved
+        cur.execute('SELECT * FROM Reservations WHERE ReservationId = %s', (reservation_id,))
+        verify = cur.fetchone()
+        print(f"DEBUG: Verification fetch result: {verify}")
+        
         cur.close()
         conn.close()
         
         return jsonify({'success': True, 'message': 'Reservation created successfully', 'reservation_id': reservation_id}), 201
         
     except Exception as e:
+        print(f"Create reservation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
         print(f"Create reservation error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -857,6 +907,7 @@ def delete_reservation(reservation_id):
     except Exception as e:
         print(f"Delete reservation error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 # =========================================REVIEWS TABLE CRUD=========================================
 

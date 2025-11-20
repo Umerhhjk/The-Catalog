@@ -1,3 +1,5 @@
+const API_BASE = "http://localhost:5000";
+
 // ----------------- Toast helper -----------------
 function ensureToastContainer() {
   let container = document.getElementById("toast-container");
@@ -18,6 +20,14 @@ function showToast(title, message) {
   setTimeout(() => toast.remove(), 4000);
 }
 
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, options);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+
+
 // ----------------- Data objects (dummy for now) -----------------
 const Author = {
   AuthorId: 1,
@@ -31,7 +41,7 @@ const Publisher = {
 };
 
 const Book = {
-  BookId: 101,
+  BookId: 4,
   Name: "Degeneration",
   AuthorID: Author.AuthorId,
   Category: "Literary Criticism",
@@ -117,29 +127,109 @@ function updateButtonState() {
 // ----------------- Booking / Return logic -----------------
 if (bookButton) {
   bookButton.addEventListener("click", () => {
-    if (userData.booked === 0 && userData.pendingreturn === 0 && Book.CopiesAvailable > 0) {
-      userData.booked = 1;
-      Book.CopiesAvailable = Math.max(0, Book.CopiesAvailable - 1);
 
-      if (userData.wishlisted === 1) {
-        userData.wishlisted = 0;
-        updateWishlistUI();
-      }
+    const isBooking = (userData.booked === 0 && userData.pendingreturn === 0 && Book.CopiesAvailable > 0);
+    const isReturnRequest = (userData.booked === 1 && userData.pendingreturn === 0);
 
-      populateDetails();
-      updateButtonState();
-      showToast("Booking Confirmed", "Book reserved successfully.");
+    // -------------------------------------------------------
+    // 1. BOOKING FLOW
+    // -------------------------------------------------------
+    if (isBooking) {
+      (async () => {
+        try {
+          // Get logged-in user
+          const currentUser = JSON.parse(
+            sessionStorage.getItem('selectedUser') ||
+            sessionStorage.getItem('currentUser') ||
+            localStorage.getItem('selectedUser') ||
+            localStorage.getItem('currentUser') ||
+            'null'
+          );
+
+          if (!currentUser) {
+            showToast('Error', 'Please sign in to book');
+            return;
+          }
+
+          const userId = currentUser.userid || currentUser.UserId || currentUser.username;
+          const bookId = Book.BookId || Book.BookID || Book.id;
+
+          const due = new Date();
+          due.setDate(due.getDate() + 14);
+          const dueDate = due.toISOString().replace('T', ' ').split('.')[0];
+
+          // Create booking (backend auto-deletes reservation if one exists for this user/book)
+          const bookingRes = await fetchJson(`${API_BASE}/api/bookings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ UserId: userId, BookId: bookId, dueDate })
+          });
+
+          userData.booked = 1;
+          userData.reservationId = null;
+          userData.wishlisted = 0;
+          Book.CopiesAvailable = Math.max(0, Book.CopiesAvailable - 1);
+          userData.bookingId = bookingRes.booking_id || bookingRes.bookingId;
+
+          updateWishlistUI();
+          populateDetails();
+          updateButtonState();
+          localStorage.setItem('catalog-event', 'booking-created:' + Date.now());
+          showToast("Booking Confirmed", "Book reserved successfully.");
+
+        } catch (err) {
+          console.error("Booking error:", err);
+          showToast("Error", err.message || "Booking failed");
+        }
+      })();
+
       return;
     }
 
-    if (userData.booked === 1 && userData.pendingreturn === 0) {
-      userData.pendingreturn = 1;
-      updateButtonState();
-      showToast("Return Request", "Return request sent to admin.");
+
+    // -------------------------------------------------------
+    // 2. RETURN REQUEST FLOW
+    // -------------------------------------------------------
+    if (isReturnRequest) {
+      (async () => {
+        try {
+          if (!userData.bookingId) {
+            showToast('Error', 'Booking ID missing');
+            return;
+          }
+
+          const resp = await fetch(`${API_BASE}/api/bookings/${userData.bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              CurrentlyBookedIndicator: false,
+              pendingReturnIndicator: true
+            })
+          });
+
+          const data = await resp.json();
+
+          if (resp.ok && data.success) {
+            userData.pendingreturn = 1;
+            updateButtonState();
+            localStorage.setItem('catalog-event', 'return-requested:' + Date.now());
+            showToast("Return Request", "Return request sent to admin.");
+          } else {
+            showToast('Error', data?.message || 'Return failed');
+          }
+
+        } catch (err) {
+          console.error("Return request error:", err);
+          showToast("Error", "Return request failed");
+        }
+      })();
+
       return;
     }
+
   });
 }
+
 
 // ----------------- Wishlist logic -----------------
 function updateWishlistUI() {
@@ -152,13 +242,50 @@ if (wishlistButton) {
   wishlistButton.addEventListener("click", () => {
     userData.wishlisted = userData.wishlisted ? 0 : 1;
     updateWishlistUI();
-    if (userData.wishlisted) {
-      showToast("Wishlist Added", "Book added to your wishlist.");
-    } else {
-      showToast("Wishlist Removed", "Book removed from your wishlist.");
-    }
+
+    (async () => {
+      try {
+        const currentUser = JSON.parse(sessionStorage.getItem('selectedUser') || sessionStorage.getItem('currentUser') || localStorage.getItem('selectedUser') || localStorage.getItem('currentUser') || 'null');
+        if (!currentUser) { showToast('Error','Please sign in to use wishlist'); return; }
+        const userId = currentUser.userid || currentUser.UserId || currentUser.username || null;
+        const bookId = Book.BookId || Book.BookID || Book.id || Book.BookId;
+
+        if (userData.wishlisted) {
+          const data = await fetchJson(`${API_BASE}/api/reservations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ UserId: userId, BookId: bookId })
+          });
+          // Extract reservation ID — try multiple key formats
+          userData.reservationId = data.reservation_id || data.reservationId || data.ReservationId || data.ReservationID;
+          console.log('Reservation ID stored:', userData.reservationId, 'Full response:', data);
+          showToast("Wishlist Added", "Book added to your wishlist.");
+        } else {
+          // remove reservation if we have id
+          if (userData.reservationId) {
+            await fetchJson(`${API_BASE}/api/reservations/${userData.reservationId}`, { method: 'DELETE' });
+            userData.reservationId = null;
+          } else {
+            // fallback: try to find by user reservations
+            const list = await fetchJson(`${API_BASE}/api/reservations?user_id=${encodeURIComponent(userId)}`);
+            if (list && list.reservations) {
+              const r = list.reservations.find(r => (r.bookid || r.BookId || r.BookID) == bookId);
+              if (r) {
+                const rid = r.reservationid || r.ReservationId || r.ReservationID;
+                if (rid) await fetchJson(`${API_BASE}/api/reservations/${rid}`, { method: 'DELETE' });
+              }
+            }
+          }
+          showToast("Wishlist Removed", "Book removed from your wishlist.");
+        }
+      } catch (err) {
+        console.error('Wishlist error', err);
+        showToast('Error', err.message || 'Wishlist operation failed');
+      }
+    })();
   });
 }
+
 
 // ----------------- STAR RATING (green fill + updates book rating) -----------------
 const stars = document.querySelectorAll('.star');

@@ -78,42 +78,104 @@ function fadeOutIn(callback) {
 }
 
 /* =====================================================
-   CORRECTED renderDashboard — ONE PANEL PER CATEGORY
+   CORRECTED renderDashboard — CONDITIONAL PANEL DISPLAY
    ===================================================== */
 
 function renderDashboard() {
   const main = document.getElementById('mainArea');
+  const continuePanel = document.getElementById('continuePanel');
 
-  // WIPE mainArea completely — removes iframe, detailsPanel, leftover panels, everything
-  main.innerHTML = '';
+  // Remove only dashboard-generated panels (category panels and details panel)
+  // Preserve persistent panels like the settings panel so their tab containers
+  // (e.g. `#manage-requests`) remain present when opened.
+  if (main) {
+    Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
+  }
 
-  // Build fresh category panels
-  categories.forEach(category => {
-    const panel = document.createElement('section');
-    panel.className = 'panel category-panel';
-    panel.style.marginBottom = '14px';
+  // If no books, show continue panel; otherwise show category panels
+  if (books.length === 0) {
+    // Show continue panel for no books available
+    if (continuePanel) {
+      continuePanel.style.display = 'block';
+    }
+  } else {
+    // Hide continue panel when books exist
+    if (continuePanel) {
+      continuePanel.style.display = 'none';
+    }
+    
+    // Build fresh category panels
+    categories.forEach(category => {
+      const panel = document.createElement('section');
+      panel.className = 'panel category-panel';
+      panel.style.marginBottom = '14px';
 
-    panel.innerHTML = `
-      <div class="row-head">
-        <div class="row-title">${category}</div>
-      </div>
-      <div class="carousel"></div>
-    `;
+      panel.innerHTML = `
+        <div class="row-head">
+          <div class="row-title">${category}</div>
+        </div>
+        <div class="carousel"></div>
+      `;
 
-    const row = panel.querySelector('.carousel');
-    const filteredBooks = books.filter(b => b.category === category);
+      const row = panel.querySelector('.carousel');
+      const filteredBooks = books.filter(b => b.category === category);
 
+      filteredBooks.forEach((book, i) => {
+        row.appendChild(createBookCard(book, i));
+      });
+
+      main.appendChild(panel);
+    });
+  }
+
+  // Tell viewManager we switched back to dashboard - but DON'T let it override visibility
+  if (typeof viewManager !== "undefined") {
+    viewManager.currentView = "dashboard";
+    viewManager.previousView = null;
+  }
+}
+
+/* =====================================================
+   RENDER SINGLE CATEGORY (when sidebar category clicked)
+   ===================================================== */
+function renderSingleCategory(categoryName) {
+  const main = document.getElementById('mainArea');
+
+  // Remove all generated panels (category panels and details)
+  if (main) {
+    Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
+  }
+
+  // Hide dashboard panels (continue, recent) and settings
+  if (typeof viewManager !== "undefined") {
+    try { viewManager._hide('dashboard'); } catch (e) {}
+    try { viewManager._hide('settings'); } catch (e) {}
+  }
+
+  // Create single category panel
+  const panel = document.createElement('section');
+  panel.className = 'panel category-panel';
+  panel.style.marginBottom = '14px';
+
+  panel.innerHTML = `
+    <div class="row-head">
+      <div class="row-title">${categoryName}</div>
+    </div>
+    <div class="carousel"></div>
+  `;
+
+  const row = panel.querySelector('.carousel');
+  const filteredBooks = books.filter(b => b.category === categoryName);
+
+  if (filteredBooks.length === 0) {
+    row.innerHTML = '<div style="color:var(--muted);padding:20px;">No books in this category.</div>';
+  } else {
     filteredBooks.forEach((book, i) => {
       row.appendChild(createBookCard(book, i));
     });
-
-    main.appendChild(panel);
-  });
-
-  // Tell viewManager we switched back to dashboard
-  if (typeof viewManager !== "undefined") {
-    viewManager.navigateTo("dashboard");
   }
+
+  main.appendChild(panel);
 }
 
 
@@ -127,8 +189,17 @@ function renderBookDetails(book) {
   // FIX: Create a history entry so the Back button works
   history.pushState({ id: book.id }, "", `?id=${encodeURIComponent(book.id)}`);
 
-  // Completely replace dashboard content
-  main.innerHTML = '';
+  // Remove only dashboard-generated panels (category panels and existing details)
+  // Preserve persistent UI like the settings panel so tabs remain available.
+  if (main) {
+    Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
+  }
+
+  // Hide continue panel and other dashboard panels
+  const continuePanel = document.getElementById('continuePanel');
+  if (continuePanel) {
+    continuePanel.style.display = 'none';
+  }
 
   // Store book for bookdetails.html
   try { 
@@ -226,9 +297,6 @@ if (stored) {
       window.location.replace('../index.html');
     };
     }
-
-
-
     } else {  }
   } catch (e) {}
 
@@ -268,7 +336,19 @@ if (stored) {
     });
   });
 
-  document.querySelectorAll('.nav-item').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+  document.querySelectorAll('.nav-item').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const label = a.querySelector('.label');
+      if (label) {
+        const categoryName = label.textContent.trim();
+        // Only render single category if it's a known category
+        if (categories.includes(categoryName)) {
+          renderSingleCategory(categoryName);
+        }
+      }
+    });
+  });
 
   const hamburger = document.getElementById('hamburger');
   const app = document.querySelector('.app');
@@ -302,10 +382,25 @@ if (stored) {
       if (viewName === 'dashboard') {
         const continuePanel = document.getElementById('continuePanel');
         const recentPanel = document.getElementById('recentPanel');
+        const settingsPanel = document.getElementById('settingsPanel');
         if (continuePanel) continuePanel.style.display = '';
         if (recentPanel) recentPanel.style.display = '';
+        if (settingsPanel) settingsPanel.style.display = 'none';
       }  else if (viewName === 'settings') {
+        const continuePanel = document.getElementById('continuePanel');
+        const recentPanel = document.getElementById('recentPanel');
         const settingsPanel = document.getElementById('settingsPanel');
+        const main = document.getElementById('mainArea');
+        
+        // Hide dashboard panels
+        if (continuePanel) continuePanel.style.display = 'none';
+        if (recentPanel) recentPanel.style.display = 'none';
+        
+        // Also hide category panels
+        if (main) {
+          Array.from(main.querySelectorAll('.category-panel')).forEach(n => n.style.display = 'none');
+        }
+        
         if (settingsPanel) settingsPanel.style.display = 'block';
       }
     },
@@ -334,7 +429,14 @@ if (stored) {
       const target = this.previousView;
       this.previousView = null;
       this.currentView = target;
-      this._show(this.currentView);
+      
+      // Render dashboard content BEFORE showing it
+      if (target === 'dashboard') {
+        renderDashboard();
+      } else {
+        this._show(this.currentView);
+      }
+      
       return true;
     }
   };
@@ -344,18 +446,292 @@ if (stored) {
   const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
   const settingsTabContents = document.querySelectorAll('.settings-tab-content');
 
-  settingsBtn.addEventListener('click', () => viewManager.navigateTo('settings'));
-  backBtn.addEventListener('click', () => viewManager.goBack());
+  // Open settings
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      viewManager.navigateTo('settings');
 
+      // Default tab load
+      const container = document.getElementById('manage-requests');
+      container.innerHTML =
+        '<div style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-weight:700;">Pending Returns</div><button id="refreshRequestsBtn" class="save-btn" style="padding:6px 12px;font-size:13px;"><i class="fa-solid fa-rotate-right"></i> Refresh</button></div><div id="pendingList"></div></div>';
+      pendingInitialized = false;
+      lastPendingKey = '';
+      loadPendingRequests();
+
+      // Attach refresh button handler
+      const refreshBtn = document.getElementById('refreshRequestsBtn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadPendingRequests);
+      }
+
+    });
+  }
+
+  // Back button
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      viewManager.goBack();
+    });
+  }
+
+  // Tab switching + data loading
   settingsTabBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const tabId = btn.dataset.tab;
+
+      // Switch UI
       settingsTabBtns.forEach((b) => b.classList.remove('active'));
       settingsTabContents.forEach((content) => content.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(tabId).classList.add('active');
+
+      // Load tab-specific data
+      if (tabId === 'manage-requests') {
+        const container = document.getElementById('manage-requests');
+        container.innerHTML =
+          '<div style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-weight:700;">Pending Returns</div><button id="refreshRequestsBtn" class="save-btn" style="padding:6px 12px;font-size:13px;"><i class="fa-solid fa-rotate-right"></i> Refresh</button></div><div id="pendingList"></div></div>';
+        pendingInitialized = false;
+        lastPendingKey = '';
+
+        loadPendingRequests();
+        
+        // Attach refresh button handler
+        const refreshBtn = document.getElementById('refreshRequestsBtn');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', loadPendingRequests);
+        }
+      }
     });
   });
+
+  // Cross-tab synchronization
+  window.addEventListener('storage', (ev) => {
+    if (ev.key === 'catalog-event' && viewManager.currentView === 'settings') {
+      loadPendingRequests();
+      loadTransactionHistory();
+    }
+  });
+
+  // Poll pending requests only (transactions now use manual refresh button)
+  setInterval(() => {
+    try {
+      // Only auto-refresh if on manage-requests tab AND settings panel is visible
+      if (viewManager.currentView === 'settings') {
+        const manageRequestsTab = document.querySelector('.settings-tab-btn[data-tab="manage-requests"]');
+        if (manageRequestsTab && manageRequestsTab.classList.contains('active')) {
+          loadPendingRequests();
+        }
+      }
+    } catch (_) {}
+  }, 5000);
+
+  const API_BASE = localStorage.getItem('API_BASE') || 'http://localhost:5000';
+  let pendingInitialized = false, activeInitialized = false;
+  let lastPendingKey = '', lastActiveKey = '';
+
+  async function loadPendingRequests() {
+    try {
+      const listEl = document.getElementById('pendingList') 
+                    || document.getElementById('manage-requests');
+
+      // If element does NOT exist, stop silently.
+      if (!listEl) return;
+
+      if (!pendingInitialized) {
+        listEl.innerHTML = '<div style="padding:20px;color:var(--muted)">Loading requests...</div>';
+      }
+
+      const resp = await fetch(`${API_BASE}/api/bookings?pending=1`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.message || 'Failed to load');
+
+      const listHtml = document.createElement('div');
+      listHtml.style.padding = '12px';
+
+      const key = (data.bookings || [])
+        .map(b => `${b.bookingid || b.BookingId}-${b.pendingreturnindicator ?? b.pendingReturnIndicator}`)
+        .join('|');
+
+      if (pendingInitialized && key === lastPendingKey) return;
+
+      if (!data.bookings || data.bookings.length === 0) {
+        listHtml.innerHTML = '<div style="color:var(--muted)">No pending return requests.</div>';
+        listEl.replaceChildren(listHtml);
+        lastPendingKey = key;
+        pendingInitialized = true;
+        return;
+      }
+
+      for (const b of data.bookings) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.style.padding = '8px 0';
+        row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+
+        const info = document.createElement('div');
+        const uid = b.userid || b.UserId;
+        const bid = b.bookid || b.BookId;
+
+        const [uname, bname] = await Promise.all([
+          (async () => {
+            try {
+              const r = await fetch(`${API_BASE}/api/users?user_id=${encodeURIComponent(uid)}`);
+              const d = await r.json();
+              return (d.user && (d.user.fullname || d.user.username || d.user.Username)) || uid;
+            } catch { return uid; }
+          })(),
+          (async () => {
+            try {
+              const r = await fetch(`${API_BASE}/api/books?book_id=${encodeURIComponent(bid)}`);
+              const d = await r.json();
+              return (d.book && (d.book.name || d.book.Name)) || bid;
+            } catch { return bid; }
+          })()
+        ]);
+
+        info.innerHTML =
+          `<div style="font-weight:600">Booking #${b.bookingid || b.BookingId}</div>
+          <div style="font-size:12px;color:var(--muted)">
+              ${uname} — ${bname} (ID ${bid})
+          </div>`;
+
+        const btn = document.createElement('button');
+        btn.className = 'save-btn';
+        btn.textContent = 'Approve Return';
+
+        btn.addEventListener('click', async () => {
+          try {
+            const id = b.bookingid || b.BookingId;
+            const r = await fetch(`${API_BASE}/api/bookings/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pendingReturnIndicator: false })
+            });
+
+            const res = await r.json();
+
+            if (r.ok && res.success) {
+              btn.disabled = true;
+              btn.textContent = 'Approved';
+              localStorage.setItem('catalog-event', 'return-approved:' + Date.now());
+
+              loadPendingRequests();
+              loadTransactionHistory();
+            } else {
+              alert(res.message || 'Approve failed');
+            }
+
+          } catch (err) {
+            console.error(err);
+            alert('Approve failed');
+          }
+        });
+
+        row.appendChild(info);
+        row.appendChild(btn);
+        listHtml.appendChild(row);
+      }
+
+      // --- Off-screen render for smooth update ---
+      const temp = document.createElement('div');
+      temp.style.display = 'none';
+      document.body.appendChild(temp);
+
+      temp.appendChild(listHtml);
+
+      listEl.replaceChildren(...temp.childNodes);
+
+      document.body.removeChild(temp);
+
+      lastPendingKey = key;
+      pendingInitialized = true;
+
+    } catch (err) {
+      console.error('Load pending requests error', err);
+
+      const listEl = document.getElementById('pendingList') 
+                  || document.getElementById('manage-requests');
+
+      if (!listEl) return;
+
+      listEl.innerHTML = '<div style="padding:20px;color:var(--muted)">Failed to load requests</div>';
+    }
+  }
+
+
+
+  async function loadTransactionHistory() {
+    try {
+      const container = document.getElementById('transactionsContainer');
+
+      // If tab not rendered yet → exit silently
+      if (!container) return;
+
+      container.innerHTML =
+        '<div style="padding:20px;color:var(--muted)">Loading transactions...</div>';
+
+      const resp = await fetch(`${API_BASE}/api/transactions`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.message || 'Failed to load');
+
+      const listHtml = document.createElement('div');
+      listHtml.style.padding = '12px';
+
+      if (!data.transactions || data.transactions.length === 0) {
+        listHtml.innerHTML = '<div style="color:var(--muted)">No transactions.</div>';
+        container.innerHTML = '';
+        container.appendChild(listHtml);
+        return;
+      }
+
+      data.transactions.forEach(t => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.style.padding = '8px 0';
+        row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+
+        const info = document.createElement('div');
+        const date = t.transactiondate || t.TransactionDate;
+        const dateStr = date ? new Date(date).toLocaleString() : '';
+        const reserved = t.reservedindicator ?? t.ReservedIndicator;
+
+        info.innerHTML =
+          `<div style="font-weight:600">Transaction #${t.transactionid || t.TransactionId}</div>
+          <div style="font-size:12px;color:var(--muted)">
+            User: ${t.userid || t.UserId} — 
+            Book: ${t.bookid || t.BookId} — 
+            ${dateStr} — 
+            ${reserved ? 'Reserved' : 'Returned'}
+          </div>`;
+
+        row.appendChild(info);
+        listHtml.appendChild(row);
+      });
+
+      container.innerHTML = '';
+      container.appendChild(listHtml);
+
+    } catch (err) {
+      console.error("Transaction history error:", err);
+
+      const container = document.getElementById('transactionsContainer');
+      if (!container) return;
+
+      container.innerHTML =
+        '<div style="padding:20px;color:var(--muted)">Failed to load transactions</div>';
+    }
+  }
+
+  // Add refresh button handler for transactions
+  const refreshTransactionsBtn = document.getElementById('refreshTransactionsBtn');
+  if (refreshTransactionsBtn) {
+    refreshTransactionsBtn.addEventListener('click', loadTransactionHistory);
+  }
 
   const editProfileBtn = document.getElementById('editProfileBtn');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -596,27 +972,6 @@ document.getElementById("addBookBtn").addEventListener("click", () => {
   uploadOverlay.style.display = 'block';
 });
 
-// 6. Listen for messages from iframe (Save / Cancel)
-window.addEventListener('message', async (event) => {
-  const { action, data } = event.data || {};
-
-  if (action === 'save-btn') {
-    uploadOverlay.style.display = 'none';
-
-    // AUTO REFRESH DASHBOARD FROM API
-    await loadBooks();
-    await loadCategories();
-
-    renderDashboard();
-
-    showToast('Book added successfully!');
-  }
-
-  if (action === 'cancel-btn') {
-    uploadOverlay.style.display = 'none';
-  }
-});
-
 // ========================
 // Toast Function
 // ========================
@@ -647,15 +1002,8 @@ function showToast(message) {
 }
 
 // ========================
-// Overlay and Upload Handling
+// Message Handler (upload, cancel, close-bookdetails)
 // ========================
-
-// Assuming uploadOverlay is already created and addBookBtn exists
-document.getElementById("addBookBtn").addEventListener("click", () => {
-  uploadOverlay.style.display = 'block';
-});
-
-// Listen for messages from iframe
 window.addEventListener('message', async (event) => {
   const { action, data } = event.data || {};
 
@@ -674,14 +1022,13 @@ window.addEventListener('message', async (event) => {
   if (action === 'cancel-btn') {
     uploadOverlay.style.display = 'none';
   }
-});
 
-window.addEventListener("message", (event) => {
-  if (event.data && event.data.action === "close-bookdetails") {
-
-    // Completely wipe bookdetails iframe
-    const main = document.getElementById("mainArea");
-    main.innerHTML = "";
+  if (action === 'close-bookdetails') {
+    // Remove only generated dashboard panels and any details iframe
+    const main = document.getElementById('mainArea');
+    if (main) {
+      Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
+    }
 
     // Render dashboard directly
     renderDashboard();
