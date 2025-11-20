@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
       description: bookData.description
     };
 
-    const res = await fetch("http://localhost:5000/api/books", {
+    const res = await fetch("https://library-backend-excpspbhaq-uc.a.run.app/api/books", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)

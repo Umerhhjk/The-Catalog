@@ -1,6 +1,6 @@
 // frontend + backend bridge
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://library-backend-excpspbhaq-uc.a.run.app/api";
 
 // DOM Elements
 const loginForm = document.getElementById('loginForm');

@@ -4,7 +4,7 @@ let categories = [];
 
 async function loadCategories() {
   try {
-    const res = await fetch("http://localhost:5000/api/books/categories");
+    const res = await fetch("https://library-backend-excpspbhaq-uc.a.run.app/api/books");
     const data = await res.json();
 
     if (data.success && Array.isArray(data.categories)) {
@@ -21,7 +21,7 @@ async function loadCategories() {
 
 async function loadBooks() {
   try {
-    const res = await fetch("http://localhost:5000/api/books");
+    const res = await fetch("https://library-backend-excpspbhaq-uc.a.run.app/api/books");
     const data = await res.json();
 
     if (data.success && data.books) {
@@ -470,7 +470,7 @@ if (stored) {
     ProfileManager.init();
   }
 
-  const API_BASE = localStorage.getItem('API_BASE') || 'http://localhost:5000';
+  const API_BASE = localStorage.getItem('API_BASE') || 'https://library-backend-excpspbhaq-uc.a.run.app';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

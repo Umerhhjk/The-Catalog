@@ -8,7 +8,7 @@
 // - Auto-refresh and manual refresh
 
 const SettingsPanel = (() => {
-  const API_BASE = localStorage.getItem('API_BASE') || 'http://localhost:5000';
+  const API_BASE = localStorage.getItem('API_BASE') || 'https://library-backend-excpspbhaq-uc.a.run.app';
   let pendingInitialized = false;
   let lastPendingKey = '';
 
