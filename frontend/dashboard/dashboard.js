@@ -4,7 +4,7 @@ let categories = [];
 
 async function loadCategories() {
   try {
-    const res = await fetch("https://library-backend-excpspbhaq-uc.a.run.app/api/books");
+    const res = await fetch("https://library-backend-excpspbhaq-uc.a.run.app/api/books/categories");
     const data = await res.json();
 
     if (data.success && Array.isArray(data.categories)) {
