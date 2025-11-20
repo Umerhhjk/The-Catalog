@@ -4,8 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
   async function insertBook(bookData) {
     const payload = {
       Name: bookData.title,
-      authorName: bookData.author,
-      publisherName: bookData.publisher,
+      AuthorName: bookData.author,
+      PublisherName: bookData.publisher,
       category: bookData.category,
       genre: bookData.genre,
       publishdate: bookData.publishDate,
