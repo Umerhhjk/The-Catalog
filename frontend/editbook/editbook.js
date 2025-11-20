@@ -1,44 +1,33 @@
-// Dummy objects
-let author = {
-  AuthorId: 1,
-  AuthorName: "Max Simon Nordau",
-  AuthorBio: "Max Simon Nordau was a critic and social commentator."
-};
+let book = {};
+let author = {};
+let publisher = {};
+let originalPublishDate = null;
 
-let publisher = {
-  PublisherId: 1,
-  PublisherName: "University of Nebraska"
-};
-
-let book = {
-  BookId: 1,
-  Name: "Degeneration",
-  authorID: author.AuthorId,
-  category: "Literary Criticism",
-  genre: "Nonfiction",
-  publisherID: publisher.PublisherId,
-  publishdate: "1993-11-01",
-  language: "English",
-  pagecount: 566,
-  copiesavailable: 30,
-  imglink: "temp.png",
-  ratedType: "E for Everyone",
-  description: "A powerful critique of cultural decay and moral weakness."
-};
-
-// Populate UI fields
 function loadBookData() {
+  const raw = sessionStorage.getItem("editBookPayload");
+  if (!raw) return;
+
+  const data = JSON.parse(raw);
+
+  book = data.Book;
+  author = data.Author;
+  publisher = data.Publisher;
+
+  // Populate UI
   document.getElementById("name").value = book.Name;
   document.getElementById("author").value = author.AuthorName;
   document.getElementById("publisher").value = publisher.PublisherName;
-  document.getElementById("category").value = book.category;
-  document.getElementById("genre").value = book.genre;
-  document.getElementById("publishDate").value = book.publishdate;
-  document.getElementById("language").value = book.language;
-  document.getElementById("pages").value = book.pagecount;
-  document.getElementById("copies").value = book.copiesavailable;
-  document.getElementById("description").value = book.description;
-  document.getElementById("bookCover").src = book.imglink;
+  document.getElementById("category").value = book.Category;
+  document.getElementById("genre").value = book.Genre;
+  document.getElementById("publishDate").value = book.PublishDate;
+  document.getElementById("language").value = book.Language;
+  document.getElementById("pages").value = book.PageCount;
+  document.getElementById("copies").value = book.CopiesAvailable;
+  document.getElementById("description").value = book.Description;
+  document.getElementById("bookCover").src = book.ImgLink;
+  document.getElementById("imglink").value = book.ImgLink;
+
+  originalPublishDate = book.PublishDate;
 }
 
 function showAlert(title, message) {
@@ -56,41 +45,56 @@ function showAlert(title, message) {
   }, 3000);
 }
 
-document.getElementById("changeBtn").addEventListener("click", () => {
-  document.getElementById("imageInput").click();
+document.getElementById("imglink").addEventListener("input", (e) => {
+  const url = e.target.value.trim();
+  book.ImgLink = url;
+  document.getElementById("bookCover").src = url;
 });
 
-document.getElementById("imageInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      document.getElementById("bookCover").src = event.target.result;
-      book.imglink = event.target.result;
-    };
-    reader.readAsDataURL(file);
+
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  const currentDateInput = document.getElementById("publishDate").value;
+
+const updated = {
+  Name: document.getElementById("name").value,
+  category: document.getElementById("category").value,
+  genre: document.getElementById("genre").value,
+  language: document.getElementById("language").value,
+  pagecount: parseInt(document.getElementById("pages").value),
+  copiesavailable: parseInt(document.getElementById("copies").value),
+  description: document.getElementById("description").value,
+  imglink: book.ImgLink
+};
+
+// Only include publishdate if user changed it
+if (currentDateInput && currentDateInput !== originalPublishDate) {
+  updated.publishdate = currentDateInput;
+}
+
+  try {
+    const res = await fetch(
+      `https://library-backend-excpspbhaq-uc.a.run.app/api/books/${book.BookId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+      }
+    );
+
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message);
+
+    showAlert("Updated", "Book updated successfully!");
+
+    setTimeout(() => {
+      window.location.href = "../bookdetails/bookdetails.html?id=" + book.BookId;
+    }, 800);
+
+  } catch (err) {
+    showAlert("Error", err.message);
   }
 });
 
-document.getElementById("saveBtn").addEventListener("click", () => {
-  // Update object with new values
-  book.Name = document.getElementById("name").value;
-  author.AuthorName = document.getElementById("author").value;
-  publisher.PublisherName = document.getElementById("publisher").value;
-  book.category = document.getElementById("category").value;
-  book.genre = document.getElementById("genre").value;
-  book.publishdate = document.getElementById("publishDate").value;
-  book.language = document.getElementById("language").value;
-  book.pagecount = parseInt(document.getElementById("pages").value);
-  book.copiesavailable = parseInt(document.getElementById("copies").value);
-  book.description = document.getElementById("description").value;
-
-  showAlert("Details Saved","Book details saved successfully!");
-
-  setTimeout(() => {
-    window.location.href = "../bookdetails/bookdetails.html";
-  }, 800);
-});
 
 window.onload = loadBookData;
 

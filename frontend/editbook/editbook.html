@@ -32,11 +32,11 @@
           </div>
           <div class="form-row">
             <label>Author:</label>
-            <input type="text" id="author">
+            <input type="text" id="author" readonly>
           </div>
           <div class="form-row">
             <label>Publisher:</label>
-            <input type="text" id="publisher">
+            <input type="text" id="publisher" readonly>
           </div>
           <div class="form-row">
             <label>Category:</label>
@@ -59,14 +59,15 @@
             <input type="number" id="pages">
           </div>
           <div class="form-row">
-            <label>Copies Available:</label>
-            <input type="number" id="copies">
-          </div>
-        </div>
+  <label>Copies Available:</label>
+  <input type="number" id="copies">
+</div>
 
-        <!-- Change Cover Button aligned under the form -->
-        <div class="image-buttons">
-          <button class="change-btn" type="button" id="changeBtn">Change Image</button>
+<div class="form-row full-width">
+  <label for="imglink">Image Link:</label>
+  <input id="imglink" type="text" />
+</div>
+
         </div>
       </form>
     </div>

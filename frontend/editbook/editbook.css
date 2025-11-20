@@ -63,6 +63,11 @@ body {
   color: white;
 }
 
+.form-row.full-width {
+  grid-column: 1 / -1; /* spans all columns */
+}
+
+
 /* Change Cover Button under form */
 .image-buttons {
   display: flex;
@@ -179,6 +184,8 @@ body {
 .alert-box.hidden {
   display: none;
 }
+
+
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }

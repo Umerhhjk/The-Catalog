@@ -579,14 +579,17 @@ window.addEventListener('message', async (event) => {
     uploadOverlay.style.display = 'none';
   }
 
-  if (action === 'close-bookdetails') {
-    // Remove only generated dashboard panels and any details iframe
+if (action === 'close-bookdetails') {
     const main = document.getElementById('mainArea');
     if (main) {
       Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
     }
 
-    // Render dashboard directly
+    // Reload books and categories from API
+    await loadBooks();
+    await loadCategories();
+
+    // Render updated dashboard
     renderDashboard();
 
     // Fix URL

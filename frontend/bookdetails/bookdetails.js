@@ -1,20 +1,41 @@
 const API_BASE = "https://library-backend-excpspbhaq-uc.a.run.app";
 
+// -----------------------------
+// Utilities
+// -----------------------------
 function formatPublishDate(raw) {
   if (!raw) return "";
 
   try {
     const d = new Date(raw);
     const day = d.getUTCDate();
-    const month = d.toLocaleString('en-US', { month: 'short' });
+    const month = d.toLocaleString("en-US", { month: "short" });
     const year = d.getUTCFullYear();
     return `${day} ${month} ${year}`;
   } catch (e) {
-    return raw.split(" ").slice(1, 4).join(" ");  // fallback
+    // fallback for weird formats
+    try {
+      return raw.split(" ").slice(1, 4).join(" ");
+    } catch (err) {
+      return raw;
+    }
   }
 }
 
-// ----------------- Toast helper -----------------
+function setInitialUserRating(rating) {
+  const stars = document.querySelectorAll('.star');
+  stars.forEach((star, index) => {
+    if (index < rating) {
+      star.classList.add('active');
+      star.textContent = '★';   // filled star
+    } else {
+      star.classList.remove('active');
+      star.textContent = '☆';   // hollow star
+    }
+  });
+}
+
+
 function ensureToastContainer() {
   let container = document.getElementById("toast-container");
   if (!container) {
@@ -36,31 +57,89 @@ function showToast(title, message) {
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Request failed");
+  // attempt to parse JSON safely
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    if (!res.ok) throw new Error("Request failed and response is not JSON");
+    data = {};
+  }
+  if (!res.ok) throw new Error((data && data.message) || "Request failed");
   return data;
 }
 
-// ====================================================================
-//   REAL DATA
-// ====================================================================
+// -----------------------------
+// Loader + image preload helpers
+// -----------------------------
+function getLoadingOverlay() {
+  // user confirmed overlay exists in HTML; return it if present
+  const ov = document.getElementById("loading-overlay");
+  return ov || null;
+}
+
+function showLoadingOverlay() {
+  const ov = getLoadingOverlay();
+  if (!ov) return;
+  ov.style.display = "flex";
+}
+
+function hideLoadingOverlay() {
+  const ov = getLoadingOverlay();
+  if (!ov) return;
+  ov.style.display = "none";
+}
+
+// Preload image and set src only on success to avoid flicker/broken image
+function setCoverImageSafely(imgElement, url, placeholder = "../placeholder.png") {
+  if (!imgElement) return;
+  // show placeholder immediately so previous-window image isn't visible
+  try {
+    imgElement.src = placeholder;
+  } catch (e) { /* ignore */ }
+
+  if (!url) return;
+
+  const pre = new Image();
+  pre.onload = () => {
+    try {
+      imgElement.src = url;
+    } catch (e) { /* ignore */ }
+  };
+  pre.onerror = () => {
+    try {
+      imgElement.src = placeholder;
+    } catch (e) { /* ignore */ }
+  };
+  pre.src = url;
+}
+
+// -----------------------------
+// State
+// -----------------------------
 let Book = {};
 let Author = {};
 let Publisher = {};
 let userData = { booked: 0, pendingreturn: 0, personalRating: 0, wishlisted: 0 };
 
-// ====================================================================
-//   LOAD REAL BOOK DATA
-// ====================================================================
+// -----------------------------
+// Main data loader (revised)
+// -----------------------------
 async function loadRealBookData() {
+  showLoadingOverlay();
+
   try {
     const params = new URLSearchParams(window.location.search);
     const bookId = params.get("id");
-    if (!bookId) return console.error("Missing book ID");
+    if (!bookId) {
+      console.error("Missing book ID");
+      return;
+    }
 
-    // ----------------------------
-    // 1) FETCH ALL BOOKS
-    // ----------------------------
+    // Ensure placeholder shows immediately (avoid showing previous page cover)
+    const imgEl = document.getElementById("book-img");
+    if (imgEl) imgEl.src = "../placeholder.png";
+
     const booksRes = await fetchJson(`${API_BASE}/api/books`);
 
     if (!booksRes.success || !booksRes.books) {
@@ -68,9 +147,6 @@ async function loadRealBookData() {
       return;
     }
 
-    // ----------------------------
-    // 2) FIND BOOK RECORD
-    // ----------------------------
     const b = booksRes.books.find((x) => String(x.bookid) === String(bookId));
 
     if (!b) {
@@ -95,85 +171,132 @@ async function loadRealBookData() {
       Rating: 0,
       UsersRated: 0,
     };
+ 
+    // FETCH FULL BOOK DETAILS
+    const fullBookRes = await fetchJson(`${API_BASE}/api/books?book_id=${bookId}`);
 
-    // ----------------------------
-    // FIX: FETCH FULL BOOK DETAILS (author + publisher)
-    // ----------------------------
-// FETCH FULL BOOK DETAILS
-const fullBookRes = await fetchJson(
-  `${API_BASE}/api/books?book_id=${bookId}`
+    if (fullBookRes.success && fullBookRes.book) {
+      const full = fullBookRes.book;
+
+      if (full.authorid) {
+        try {
+          const aRes = await fetchJson(`${API_BASE}/api/authors?author_id=${full.authorid}`);
+          if (aRes.success && aRes.author) {
+            Author = {
+              AuthorId: aRes.author.authorid,
+              AuthorName: aRes.author.authorname || "Unknown",
+              AuthorBio: aRes.author.authorbio || ""
+            };
+          }
+        } catch (e) {
+          // ignore author errors, show Unknown later
+        }
+      }
+         
+      if (full.publisherid) {
+        try {
+          const pRes = await fetchJson(`${API_BASE}/api/publishers?publisher_id=${full.publisherid}`);
+          if (pRes.success && pRes.publisher) {
+            Publisher = {
+              PublisherId: pRes.publisher.publisherid,
+              PublisherName: pRes.publisher.publishername || "Unknown"
+            };
+          }
+        } catch (e) {
+          // ignore publisher errors
+        }
+      }
+    }
+
+    // Ratings summary
+    try {
+      const ratingRes = await fetchJson(`${API_BASE}/api/reviews/rating/${bookId}`);
+      Book.Rating = ratingRes.average_rating ? Number(ratingRes.average_rating) : 0;
+      Book.UsersRated = ratingRes.review_count || 0;
+    } catch (e) {
+      Book.Rating = 0;
+      Book.UsersRated = 0;
+    }
+
+    // Current user personal rating (if any)
+const currentUser = JSON.parse(
+  sessionStorage.getItem("selectedUser") ||
+  localStorage.getItem("selectedUser") ||
+  "null"
 );
 
-if (fullBookRes.success && fullBookRes.book) {
-  const full = fullBookRes.book;
+if (currentUser) {
+  try {
+    const res = await fetch(`${API_BASE}/api/reviews?book_id=${bookId}&user_id=${currentUser.userid}`);
 
-  // Author (backend returns: { author: {...} })
-if (full.authorid) {
-  const aRes = await fetchJson(
-    `${API_BASE}/api/authors?author_id=${full.authorid}`
-  );
+    if (res.status === 404) {
+      console.warn("NO USER RATING (404), SET 0");
+      userData.personalRating = 0;
 
-  if (aRes.success && aRes.author) {
-    Author = {
-      AuthorId: aRes.author.authorid,
-      AuthorName: aRes.author.authorname || "Unknown",
-      AuthorBio: aRes.author.authorbio || ""
-    };
+    } else if (res.ok) {
+      const data = await res.json();
+      console.log("REVIEWS API RAW RESPONSE:", data);
+
+      // FIXED: backend returns { success: true, review: {...} }
+      if (data?.success && data.review && typeof data.review.rating === "number") {
+        console.log("USER RATING FOUND:", data.review.rating);
+        userData.personalRating = Number(data.review.rating);
+      } else {
+        console.warn("NO USER RATING, SETTING TO 0");
+        userData.personalRating = 0;
+      }
+
+    } else {
+      userData.personalRating = 0;
+    }
+
+  } catch (err) {
+    console.warn("ERROR GETTING PERSONAL RATING:", err);
+    userData.personalRating = 0;
   }
 }
 
-// Publisher (backend returns: { publisher: {...} })
-if (full.publisherid) {
-  const pRes = await fetchJson(
-    `${API_BASE}/api/publishers?publisher_id=${full.publisherid}`
-  );
 
-  if (pRes.success && pRes.publisher) {
-    Publisher = {
-      PublisherId: pRes.publisher.publisherid,
-      PublisherName: pRes.publisher.publishername || "Unknown"
-    };
-  }
-}
-
-}
+    // INITIALIZE UI AFTER DATA READY
+    // ⭐ Apply user rating before UI initializes
 
 
-    // ----------------------------
-    // 5) INITIALIZE UI
-    // ----------------------------
+
     initDOM();
   } catch (err) {
     console.error("Failed to load book:", err);
+  } finally {
+    hideLoadingOverlay();
   }
 }
 
-// ====================================================================
-//   INITIALIZE ALL DOM LOGIC AFTER DATA IS LOADED
-// ====================================================================
+// -----------------------------
+// UI initialization
+// -----------------------------
 function initDOM() {
   // ----------------- POPULATE DETAILS -----------------
   function populateDetails() {
-    document.getElementById("book-img").src = Book.ImgLink;
-    document.getElementById("book-name").textContent = Book.Name;
+    const imgEl = document.getElementById("book-img");
+    setCoverImageSafely(imgEl, Book.ImgLink, "../placeholder.png");
+
+    document.getElementById("book-name").textContent = Book.Name || "";
     document.getElementById("book-author").textContent =
-      Author.AuthorName || "Unknown";
-    document.getElementById("book-category").textContent = Book.Category;
-    document.getElementById("book-genre").textContent = Book.Genre;
+      (Author && Author.AuthorName) || "Unknown";
+    document.getElementById("book-category").textContent = Book.Category || "";
+    document.getElementById("book-genre").textContent = Book.Genre || "";
     document.getElementById("book-publisher").textContent =
-      Publisher.PublisherName || "Unknown";
+      (Publisher && Publisher.PublisherName) || "Unknown";
     document.getElementById("book-publishdate").textContent =
       formatPublishDate(Book.PublishDate);
-    document.getElementById("book-language").textContent = Book.Language;
-    document.getElementById("book-pagecount").textContent = Book.PageCount;
+    document.getElementById("book-language").textContent = Book.Language || "";
+    document.getElementById("book-pagecount").textContent = Book.PageCount ?? "";
     document.getElementById("book-copies").textContent =
-      Book.CopiesAvailable;
-    document.getElementById("book-rating").textContent = `${Book.Rating.toFixed(
-      1
-    )}/5`;
-    document.getElementById("book-usersrated").textContent = `${Book.UsersRated} users`;
-    document.getElementById("book-rated").textContent = Book.RatedType;
-  }
+      Book.CopiesAvailable ?? "";
+    document.getElementById("book-rating").textContent = `${(Book.Rating || 0).toFixed(1)}/5`;
+    document.getElementById("book-usersrated").textContent = `${Book.UsersRated || 0} users`;
+    document.getElementById("book-rated").textContent = Book.RatedType || "";
+
+  }  
 
   populateDetails();
 
@@ -184,10 +307,11 @@ function initDOM() {
   const wishlistButton = document.getElementById("wishlist-button");
 
   function updateButtonState() {
+    if (!bookButton) return;
     bookButton.classList.remove("green", "grey", "orange", "darkgreen");
     bookButton.disabled = false;
 
-    if (Book.CopiesAvailable <= 0 && userData.booked === 0) {
+    if ((Book.CopiesAvailable ?? 0) <= 0 && userData.booked === 0) {
       bookButton.textContent = "Book";
       bookButton.classList.add("darkgreen");
       bookButton.disabled = true;
@@ -212,17 +336,99 @@ function initDOM() {
   // ====================================================================
   // BOOKING LOGIC
   // ====================================================================
-  bookButton.addEventListener("click", () => {
-    const isBooking =
-      userData.booked === 0 &&
-      userData.pendingreturn === 0 &&
-      Book.CopiesAvailable > 0;
+  if (bookButton) {
+    bookButton.addEventListener("click", () => {
+      const isBooking =
+        userData.booked === 0 &&
+        userData.pendingreturn === 0 &&
+        (Book.CopiesAvailable ?? 0) > 0;
 
-    const isReturnRequest =
-      userData.booked === 1 && userData.pendingreturn === 0;
+      const isReturnRequest =
+        userData.booked === 1 && userData.pendingreturn === 0;
 
-    // BOOK
-    if (isBooking) {
+      // BOOK
+      if (isBooking) {
+        (async () => {
+          try {
+            const currentUser = JSON.parse(
+              sessionStorage.getItem("selectedUser") ||
+                localStorage.getItem("selectedUser") ||
+                "null"
+            );
+            if (!currentUser) return showToast("Error", "Please sign in");
+
+            const userId = currentUser.userid;
+            const bookId = Book.BookId;
+
+            const due = new Date();
+            due.setDate(due.getDate() + 14);
+            const dueDate = due.toISOString().replace("T", " ").split(".")[0];
+
+            const bookingRes = await fetchJson(
+              `${API_BASE}/api/bookings`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ UserId: userId, BookId: bookId, dueDate }),
+              }
+            );
+
+            userData.booked = 1;
+            userData.pendingreturn = 0;
+            userData.bookingId = bookingRes.booking_id;
+            Book.CopiesAvailable = (Book.CopiesAvailable ?? 1) - 1;
+
+            populateDetails();
+            updateButtonState();
+            showToast("Booked", "Successfully booked");
+          } catch (e) {
+            showToast("Error", "Booking failed");
+          }
+        })();
+        return;
+      }
+
+      // RETURN REQUEST
+      if (isReturnRequest) {
+        (async () => {
+          try {
+            await fetchJson(
+              `${API_BASE}/api/bookings/${userData.bookingId}`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  CurrentlyBookedIndicator: false,
+                  pendingReturnIndicator: true,
+                }),
+              }
+            );
+
+            userData.pendingreturn = 1;
+            updateButtonState();
+            showToast("Return Request", "Sent to admin");
+          } catch (e) {
+            showToast("Error", "Return failed");
+          }
+        })();
+      }
+    });
+  }
+
+  // ====================================================================
+  // WISHLIST LOGIC
+  // ====================================================================
+  function updateWishlistUI() {
+    if (!wishlistButton) return;
+    if (userData.wishlisted) wishlistButton.classList.add("active");
+    else wishlistButton.classList.remove("active");
+  }
+
+  if (wishlistButton) {
+    wishlistButton.addEventListener("click", () => {
+      userData.wishlisted = userData.wishlisted ? 0 : 1;
+      updateWishlistUI();
+
       (async () => {
         try {
           const currentUser = JSON.parse(
@@ -230,170 +436,100 @@ function initDOM() {
               localStorage.getItem("selectedUser") ||
               "null"
           );
-          if (!currentUser) return showToast("Error", "Please sign in");
+          if (!currentUser) return showToast("Error", "Sign in first");
 
           const userId = currentUser.userid;
           const bookId = Book.BookId;
 
-          const due = new Date();
-          due.setDate(due.getDate() + 14);
-          const dueDate = due.toISOString().replace("T", " ").split(".")[0];
-
-          const bookingRes = await fetchJson(
-            `${API_BASE}/api/bookings`,
-            {
+          if (userData.wishlisted) {
+            const data = await fetchJson(`${API_BASE}/api/reservations`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ UserId: userId, BookId: bookId, dueDate }),
+              body: JSON.stringify({ UserId: userId, BookId: bookId }),
+            });
+
+            userData.reservationId = data.reservation_id;
+            showToast("Wishlisted", "Book added");
+          } else {
+            if (userData.reservationId) {
+              await fetchJson(
+                `${API_BASE}/api/reservations/${userData.reservationId}`,
+                { method: "DELETE" }
+              );
             }
-          );
-
-          userData.booked = 1;
-          userData.pendingreturn = 0;
-          userData.bookingId = bookingRes.booking_id;
-          Book.CopiesAvailable -= 1;
-
-          populateDetails();
-          updateButtonState();
-          showToast("Booked", "Successfully booked");
-        } catch (e) {
-          showToast("Error", "Booking failed");
-        }
-      })();
-      return;
-    }
-
-    // RETURN REQUEST
-    if (isReturnRequest) {
-      (async () => {
-        try {
-          await fetchJson(
-            `${API_BASE}/api/bookings/${userData.bookingId}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                CurrentlyBookedIndicator: false,
-                pendingReturnIndicator: true,
-              }),
-            }
-          );
-
-          userData.pendingreturn = 1;
-          updateButtonState();
-          showToast("Return Request", "Sent to admin");
-        } catch (e) {
-          showToast("Error", "Return failed");
-        }
-      })();
-    }
-  });
-
-  // ====================================================================
-  // WISHLIST LOGIC
-  // ====================================================================
-  function updateWishlistUI() {
-    if (userData.wishlisted)
-      wishlistButton.classList.add("active");
-    else wishlistButton.classList.remove("active");
-  }
-
-  wishlistButton.addEventListener("click", () => {
-    userData.wishlisted = userData.wishlisted ? 0 : 1;
-    updateWishlistUI();
-
-    (async () => {
-      try {
-        const currentUser = JSON.parse(
-          sessionStorage.getItem("selectedUser") ||
-            localStorage.getItem("selectedUser") ||
-            "null"
-        );
-        if (!currentUser) return showToast("Error", "Sign in first");
-
-        const userId = currentUser.userid;
-        const bookId = Book.BookId;
-
-        if (userData.wishlisted) {
-          const data = await fetchJson(`${API_BASE}/api/reservations`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ UserId: userId, BookId: bookId }),
-          });
-
-          userData.reservationId = data.reservation_id;
-          showToast("Wishlisted", "Book added");
-        } else {
-          if (userData.reservationId) {
-            await fetchJson(
-              `${API_BASE}/api/reservations/${userData.reservationId}`,
-              { method: "DELETE" }
-            );
+            showToast("Removed", "Book removed");
           }
-          showToast("Removed", "Book removed");
+        } catch (e) {
+          showToast("Error", "Wishlist failed");
         }
-      } catch (e) {
-        showToast("Error", "Wishlist failed");
-      }
-    })();
-  });
-
-  // ====================================================================
-  // STAR RATING
-  // ====================================================================
-  const stars = document.querySelectorAll(".star");
-  let persistentRating = userData.personalRating;
-
-  function updateStars() {
-    stars.forEach((star) => {
-      const v = parseInt(star.dataset.value);
-      star.textContent = v <= persistentRating ? "★" : "☆";
-      star.classList.toggle("filled", v <= persistentRating);
+      })();
     });
   }
 
+  // ====================================================================
+// STAR RATING
+// ====================================================================
+const stars = document.querySelectorAll(".star");
+let persistentRating = userData.personalRating || 0;
+
+function updateStars() {
   stars.forEach((star) => {
-    const val = parseInt(star.dataset.value);
+    const v = parseInt(star.dataset.value, 10);
+    star.textContent = v <= persistentRating ? "★" : "☆";
+    star.classList.toggle("filled", v <= persistentRating);
+  });
+}
 
-    star.addEventListener("mouseover", () => {
-      stars.forEach((s) => {
-        const v = parseInt(s.dataset.value);
-        s.textContent = v <= val ? "★" : "☆";
-        s.classList.toggle("filled", v <= val);
-      });
+updateStars(); // highlight user rating immediately
+
+stars.forEach((star) => {
+  const val = parseInt(star.dataset.value, 10);
+
+  star.addEventListener("mouseover", () => {
+    stars.forEach((s) => {
+      const v = parseInt(s.dataset.value, 10);
+      s.textContent = v <= val ? "★" : "☆";
+      s.classList.toggle("filled", v <= val);
     });
+  });
 
-    star.addEventListener("mouseout", updateStars);
+  star.addEventListener("mouseout", updateStars);
 
-    star.addEventListener("click", () => {
-      const oldRating = userData.personalRating;
-      persistentRating = val;
-      userData.personalRating = val;
+  star.addEventListener("click", async () => {
+    const currentUser = JSON.parse(
+      sessionStorage.getItem("selectedUser") ||
+      localStorage.getItem("selectedUser") ||
+      "null"
+    );
+    if (!currentUser) return showToast("Error", "Please sign in");
 
-      if (oldRating === 0) {
-        Book.UsersRated += 1;
-        Book.Rating =
-          (Book.Rating * (Book.UsersRated - 1) + val) /
-          Book.UsersRated;
-      } else {
-        Book.Rating =
-          (Book.Rating * Book.UsersRated - oldRating + val) /
-          Book.UsersRated;
-      }
+    const userId = currentUser.userid;
+    const bookId = Book.BookId;
+    const newRating = val;
 
-      document.getElementById("book-rating").textContent = `${Book.Rating.toFixed(
-        1
-      )}/5`;
-      document.getElementById(
-        "book-usersrated"
-      ).textContent = `${Book.UsersRated} users`;
+    try {
+      await fetchJson(`${API_BASE}/api/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          BookID: bookId,
+          UserId: userId,
+          Rating: newRating
+        })
+      });
+
+      userData.personalRating = newRating;
+      persistentRating = newRating;
 
       updateStars();
-      showToast("Rating Saved", `You rated ${val} stars`);
-    });
-  });
+      showToast("Rating Saved", `You rated ${newRating} stars`);
 
-  updateStars();
+    } catch (err) {
+      showToast("Error", "Rating failed");
+      console.error(err);
+    }
+  });
+});
 
   // ====================================================================
   // DESCRIPTION TOGGLE
@@ -402,48 +538,63 @@ function initDOM() {
   const toggleBtn = document.getElementById("toggle-description");
 
   let expanded = false;
+  const safeDesc = Book.Description || "";
   const shortText =
-    Book.Description.split(" ").slice(0, 60).join(" ") + "...";
-  descText.textContent = shortText;
+    safeDesc.split(" ").slice(0, 60).join(" ") + (safeDesc.length > 60 ? "..." : "");
+  if (descText) descText.textContent = shortText;
 
-  toggleBtn.addEventListener("click", () => {
-    expanded = !expanded;
-    descText.textContent = expanded ? Book.Description : shortText;
-    toggleBtn.textContent = expanded ? "Show less" : "Show more";
-  });
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      expanded = !expanded;
+      if (descText) descText.textContent = expanded ? safeDesc : shortText;
+      toggleBtn.textContent = expanded ? "Show less" : "Show more";
+    });
+  }
 
   // ====================================================================
   // BACK BUTTON
   // ====================================================================
-  document
-    .getElementById("back-to-dashboard")
-    .addEventListener("click", () => {
-      window.parent.postMessage(
-        { action: "close-bookdetails" },
-        "*"
-      );
+  const backBtn = document.getElementById("back-to-dashboard");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      window.parent.postMessage({ action: "close-bookdetails" }, "*");
     });
+  }
 
   // ====================================================================
   // ADMIN BUTTON
   // ====================================================================
-  const currentUser = JSON.parse(
-    localStorage.getItem("selectedUser") || "null"
-  );
-  const AdminIndicator = currentUser?.adminindicator ? 1 : 0;
+  const currentUserLocal = JSON.parse(localStorage.getItem("selectedUser") || "null");
+  const AdminIndicator = currentUserLocal?.adminindicator ? 1 : 0;
   const adminButton = document.getElementById("admin-button");
 
-  if (AdminIndicator === 1) {
-    adminButton.style.display = "inline-block";
-    adminButton.addEventListener("click", () => {
-      window.location.href = "../editbook/editbook.html";
-    });
-  } else {
-    adminButton.style.display = "none";
+  if (adminButton) {
+    if (AdminIndicator === 1) {
+      adminButton.style.display = "inline-block";
+      adminButton.addEventListener("click", () => {
+        const payload = { Book, Author, Publisher };
+        sessionStorage.setItem("editBookPayload", JSON.stringify(payload));
+        window.location.href = `../editbook/editbook.html?id=${Book.BookId}`;
+      });
+    } else {
+      adminButton.style.display = "none";
+    }
   }
+
+  // FINAL: highlight stars after everything is loaded (small delay to ensure DOM state)
+  setTimeout(() => {
+    const stars = document.querySelectorAll(".star");
+    const rating = userData.personalRating || 0;
+
+    stars.forEach((star) => {
+      const v = parseInt(star.dataset.value, 10);
+      star.textContent = v <= rating ? "★" : "☆";
+      star.classList.toggle("filled", v <= rating);
+    });
+  }, 50);
 }
 
-// ====================================================================
-//   START EVERYTHING
-// ====================================================================
+// -----------------------------
+// Start loading
+// -----------------------------
 loadRealBookData();
