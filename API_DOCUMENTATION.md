@@ -3,7 +3,7 @@
 This document describes all available API endpoints for the Library Management System.
 
 Base URL: `http://localhost:5000`
-Render URL: `https://library-backend-xkot.onrender.com`
+Google Cloud Run URL: `https://library-backend-excpspbhaq-uc.a.run.app`
 
 ## Table of Contents
 - [Authentication](#authentication)
