@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS Books (
     language VARCHAR(30) NOT NULL,
     pagecount INT NOT NULL,
     copiesavailable INT NOT NULL,
-    imglink VARCHAR(255),
+    imglink TEXT,
     ratedType VARCHAR(20) NOT NULL,
     description TEXT,
     CONSTRAINT fk_author FOREIGN KEY (authorID) REFERENCES Author(AuthorId),
