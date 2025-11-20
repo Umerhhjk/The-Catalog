@@ -402,7 +402,21 @@ def create_book():
     """Create a new book"""
     try:
         data = request.get_json()
-        required_fields = ['Name', 'authorID', 'category', 'genre', 'publishdate', 'language', 'pagecount', 'copiesavailable', 'ratedType']
+        if not data:
+            return jsonify({'success': False, 'message': 'Request body is required'}), 400
+
+        required_fields = [
+            'Name',
+            'category',
+            'genre',
+            'publishdate',
+            'language',
+            'pagecount',
+            'copiesavailable',
+            'ratedType',
+            'AuthorName',
+            'PublisherName'
+        ]
         
         for field in required_fields:
             if field not in data:
@@ -413,7 +427,46 @@ def create_book():
             return jsonify({'success': False, 'message': 'Database connection failed'}), 500
         
         cur = conn.cursor()
-        
+
+        author_name = data.get('AuthorName') or data.get('authorName')
+        author_bio = data.get('AuthorBio')
+
+        if not author_name:
+            cur.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'AuthorName is required'}), 400
+
+        cur.execute('SELECT AuthorId FROM Author WHERE LOWER(AuthorName) = LOWER(%s)', (author_name,))
+        existing_author = cur.fetchone()
+        if existing_author:
+            author_id = existing_author[0]
+        else:
+            cur.execute('''
+                INSERT INTO Author (AuthorName, AuthorBio)
+                VALUES (%s, %s)
+                RETURNING AuthorId
+            ''', (author_name, author_bio))
+            author_id = cur.fetchone()[0]
+
+        publisher_name = data.get('PublisherName') or data.get('publisherName')
+
+        if not publisher_name:
+            cur.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'PublisherName is required'}), 400
+
+        cur.execute('SELECT PublisherId FROM Publisher WHERE LOWER(PublisherName) = LOWER(%s)', (publisher_name,))
+        existing_publisher = cur.fetchone()
+        if existing_publisher:
+            publisher_id = existing_publisher[0]
+        else:
+            cur.execute('''
+                INSERT INTO Publisher (PublisherName)
+                VALUES (%s)
+                RETURNING PublisherId
+            ''', (publisher_name,))
+            publisher_id = cur.fetchone()[0]
+
         publish_date = data['publishdate']
         if isinstance(publish_date, str):
             publish_date = datetime.strptime(publish_date, '%Y-%m-%d').date()
@@ -424,10 +477,10 @@ def create_book():
             RETURNING BookId
         ''', (
             data['Name'],
-            data['authorID'],
+            author_id,
             data['category'],
             data['genre'],
-            data.get('publisherID'),
+            publisher_id,
             publish_date,
             data['language'],
             data['pagecount'],
