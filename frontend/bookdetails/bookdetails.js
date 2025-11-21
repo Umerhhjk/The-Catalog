@@ -405,6 +405,13 @@ function initDOM() {
     bookButton.classList.remove("green", "grey", "orange", "darkgreen");
     bookButton.disabled = false;
 
+    if (userData.pendingreturn === 1) {
+      bookButton.textContent = "Pending Return";
+      bookButton.classList.add("orange");
+      bookButton.disabled = true;
+      return;
+    }
+
     if ((Book.CopiesAvailable ?? 0) <= 0 && userData.booked === 0) {
       bookButton.textContent = "Book";
       bookButton.classList.add("darkgreen");
@@ -412,16 +419,12 @@ function initDOM() {
       return;
     }
 
-    if (userData.booked === 0 && userData.pendingreturn === 0) {
+    if (userData.booked === 0) {
       bookButton.textContent = "Book";
       bookButton.classList.add("green");
-    } else if (userData.booked === 1 && userData.pendingreturn === 0) {
+    } else if (userData.booked === 1) {
       bookButton.textContent = "Return";
       bookButton.classList.add("grey");
-    } else if (userData.booked === 1 && userData.pendingreturn === 1) {
-      bookButton.textContent = "Pending Return";
-      bookButton.classList.add("orange");
-      bookButton.disabled = true;
     }
   }
 
@@ -534,6 +537,7 @@ function attachBookingListener() {
           
           showToast("Booked", "Successfully booked");
           
+          localStorage.setItem('booking-status-changed', Date.now().toString());
           // Notify parent that booking status changed (for cross-tab sync)
           window.parent.postMessage({ action: "booking-changed" }, "*");
         } catch (e) {
@@ -571,6 +575,7 @@ function attachBookingListener() {
           updateWishlistUI();
           showToast("Return Request", "Sent to admin");
           
+          localStorage.setItem('booking-status-changed', Date.now().toString());
           // Notify parent that booking status changed (for cross-tab sync)
           window.parent.postMessage({ action: "booking-changed" }, "*");
         } catch (e) {
