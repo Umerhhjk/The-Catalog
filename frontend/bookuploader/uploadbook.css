@@ -31,7 +31,8 @@ button {
 .popup-content {
   background-color: #2b2b2b;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 16px;
+  overflow: hidden;
   width: 90%;
   max-width: 900px;
   box-shadow: 0 0 20px rgba(0,0,0,0.5);
@@ -102,7 +103,7 @@ button {
 /* Description Section */
 .description-section {
   background-color: #2b2b2b;
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 20px;
   margin-top: 15px;
   box-shadow: 0 0 10px rgba(0,0,0,0.5);

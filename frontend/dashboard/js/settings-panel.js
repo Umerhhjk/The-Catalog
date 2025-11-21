@@ -11,6 +11,9 @@ const SettingsPanel = (() => {
   const API_BASE = localStorage.getItem('API_BASE') || 'https://library-backend-excpspbhaq-uc.a.run.app';
   let pendingInitialized = false;
   let lastPendingKey = '';
+  const userCache = new Map();
+  const bookCache = new Map();
+  const MAX_TX_ROWS = 200;
 
   // Initialize settings panel event listeners
   function init(viewManager) {
@@ -29,7 +32,6 @@ const SettingsPanel = (() => {
           '<div style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-weight:700;">Pending Returns</div><button id="refreshRequestsBtn" class="save-btn" style="padding:6px 12px;font-size:13px;"><i class="fa-solid fa-rotate-right"></i> Refresh</button></div><div id="pendingList"></div></div>';
         pendingInitialized = false;
         lastPendingKey = '';
-        loadPendingRequests();
 
         // Attach refresh button handler
         const refreshBtn = document.getElementById('refreshRequestsBtn');
@@ -245,16 +247,12 @@ const SettingsPanel = (() => {
     }
   }
 
-  // Load transaction history
   async function loadTransactionHistory() {
     try {
       const container = document.getElementById('transactionsContainer');
-
-      // If tab not rendered yet → exit silently
       if (!container) return;
 
-      container.innerHTML =
-        '<div style="padding:20px;color:var(--muted)">Loading transactions...</div>';
+      container.innerHTML = '<div style="padding:20px;color:var(--muted)">Loading transactions...</div>';
 
       const resp = await fetch(`${API_BASE}/api/transactions`);
       const data = await resp.json();
@@ -263,15 +261,56 @@ const SettingsPanel = (() => {
       const listHtml = document.createElement('div');
       listHtml.style.padding = '12px';
 
-      if (!data.transactions || data.transactions.length === 0) {
+      const items = Array.isArray(data.transactions) ? data.transactions.slice() : [];
+      if (items.length === 0) {
         listHtml.innerHTML = '<div style="color:var(--muted)">No transactions.</div>';
         container.innerHTML = '';
         container.appendChild(listHtml);
         return;
       }
 
-      // Process transactions with name lookups
-      for (const t of data.transactions) {
+      items.sort((a, b) => {
+        const ad = new Date(a.transactiondate || a.TransactionDate || 0).getTime();
+        const bd = new Date(b.transactiondate || b.TransactionDate || 0).getTime();
+        return bd - ad;
+      });
+      const limited = items.slice(0, MAX_TX_ROWS);
+
+      const uniqueUserIds = Array.from(new Set(limited.map(t => t.userid || t.UserId).filter(Boolean)));
+      const uniqueBookIds = Array.from(new Set(limited.map(t => t.bookid || t.BookId).filter(Boolean)));
+
+      const fetchUser = async (uid) => {
+        if (userCache.has(uid)) return userCache.get(uid);
+        try {
+          const r = await fetch(`${API_BASE}/api/users?user_id=${encodeURIComponent(uid)}`);
+          const d = await r.json();
+          const name = (d.user && (d.user.fullname || d.user.username || d.user.Username)) || uid;
+          userCache.set(uid, name);
+          return name;
+        } catch {
+          userCache.set(uid, uid);
+          return uid;
+        }
+      };
+
+      const fetchBook = async (bid) => {
+        if (bookCache.has(bid)) return bookCache.get(bid);
+        try {
+          const r = await fetch(`${API_BASE}/api/books?book_id=${encodeURIComponent(bid)}`);
+          const d = await r.json();
+          const name = (d.book && (d.book.name || d.book.Name)) || bid;
+          bookCache.set(bid, name);
+          return name;
+        } catch {
+          bookCache.set(bid, bid);
+          return bid;
+        }
+      };
+
+      await Promise.all(uniqueUserIds.map(fetchUser));
+      await Promise.all(uniqueBookIds.map(fetchBook));
+
+      for (const t of limited) {
         const row = document.createElement('div');
         row.style.display = 'flex';
         row.style.justifyContent = 'space-between';
@@ -286,23 +325,8 @@ const SettingsPanel = (() => {
         const reserved = t.reservedindicator ?? t.ReservedIndicator;
         const action = reserved ? 'Reserved' : 'Booked';
 
-        // Fetch user and book names
-        const [uname, bname] = await Promise.all([
-          (async () => {
-            try {
-              const r = await fetch(`${API_BASE}/api/users?user_id=${encodeURIComponent(uid)}`);
-              const d = await r.json();
-              return (d.user && (d.user.fullname || d.user.username || d.user.Username)) || uid;
-            } catch { return uid; }
-          })(),
-          (async () => {
-            try {
-              const r = await fetch(`${API_BASE}/api/books?book_id=${encodeURIComponent(bid)}`);
-              const d = await r.json();
-              return (d.book && (d.book.name || d.book.Name)) || bid;
-            } catch { return bid; }
-          })()
-        ]);
+        const uname = userCache.get(uid) || uid;
+        const bname = bookCache.get(bid) || bid;
 
         const info = document.createElement('div');
         info.innerHTML =
@@ -322,13 +346,9 @@ const SettingsPanel = (() => {
       container.appendChild(listHtml);
 
     } catch (err) {
-      console.error("Transaction history error:", err);
-
       const container = document.getElementById('transactionsContainer');
       if (!container) return;
-
-      container.innerHTML =
-        '<div style="padding:20px;color:var(--muted)">Failed to load transactions</div>';
+      container.innerHTML = '<div style="padding:20px;color:var(--muted)">Failed to load transactions</div>';
     }
   }
 

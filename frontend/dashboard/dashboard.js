@@ -695,32 +695,65 @@ uploadOverlay.style.background = 'rgba(0,0,0,0.65)';
 uploadOverlay.style.display = 'none';
 uploadOverlay.style.zIndex = '99999';
 uploadOverlay.style.backdropFilter = 'blur(4px)';
+uploadOverlay.style.opacity = '0';
+uploadOverlay.style.transition = 'opacity 220ms ease';
 
-// Create iframe to load your form
+const uploaderContainer = document.createElement('div');
+uploaderContainer.style.width = '60%';
+uploaderContainer.style.height = '95%';
+uploaderContainer.style.position = 'absolute';
+uploaderContainer.style.top = '50%';
+uploaderContainer.style.left = '50%';
+uploaderContainer.style.transform = 'translate(-50%, -50%)';
+uploaderContainer.style.background = '#0f161a';
+uploaderContainer.style.borderRadius = '16px';
+uploaderContainer.style.boxShadow = '0 24px 64px rgba(0,0,0,0.5)';
+uploaderContainer.style.overflow = 'hidden';
+uploaderContainer.style.opacity = '0';
+uploaderContainer.style.transition = 'transform 220ms ease, opacity 220ms ease';
+
 const uploaderFrame = document.createElement('iframe');
 uploaderFrame.src = '../bookuploader/uploadbook.html';
-uploaderFrame.style.width = '60%';
-uploaderFrame.style.height = '95%';
+uploaderFrame.style.width = '100%';
+uploaderFrame.style.height = '100%';
 uploaderFrame.style.border = 'none';
-uploaderFrame.style.borderRadius = '0px';
-uploaderFrame.style.position = 'absolute';
-uploaderFrame.style.top = '50%';
-uploaderFrame.style.left = '50%';
-uploaderFrame.style.transform = 'translate(-50%, -50%)';
-uploaderFrame.style.background = '#fff';
 
 // 3. Close overlay on background click
 uploadOverlay.addEventListener('click', (e) => {
-  if (e.target === uploadOverlay) uploadOverlay.style.display = 'none';
+  if (e.target === uploadOverlay) {
+    uploadOverlay.style.opacity = '0';
+    uploaderContainer.style.opacity = '0';
+    uploaderContainer.style.transform = 'translate(-50%, -48%)';
+    setTimeout(() => { uploadOverlay.style.display = 'none'; }, 220);
+  }
 });
 
 // 4. Add iframe inside overlay
-uploadOverlay.appendChild(uploaderFrame);
+uploaderContainer.appendChild(uploaderFrame);
+uploadOverlay.appendChild(uploaderContainer);
 document.body.appendChild(uploadOverlay);
+
+function openUploadOverlay() {
+  uploadOverlay.style.display = 'block';
+  uploadOverlay.style.opacity = '0';
+  uploaderContainer.style.opacity = '0';
+  uploaderContainer.style.transform = 'translate(-50%, -48%)';
+  void uploadOverlay.offsetWidth;
+  uploadOverlay.style.opacity = '1';
+  uploaderContainer.style.opacity = '1';
+  uploaderContainer.style.transform = 'translate(-50%, -50%)';
+}
+
+function closeUploadOverlay() {
+  uploadOverlay.style.opacity = '0';
+  uploaderContainer.style.opacity = '0';
+  uploaderContainer.style.transform = 'translate(-50%, -48%)';
+  setTimeout(() => { uploadOverlay.style.display = 'none'; }, 220);
+}
 
 // 5. Trigger → Show overlay
 document.getElementById("addBookBtn").addEventListener("click", () => {
-  uploadOverlay.style.display = 'block';
+  openUploadOverlay();
 });
 
 // ========================
@@ -732,6 +765,11 @@ function showToast(message) {
   if (!container) {
     container = document.createElement('div');
     container.id = 'toast-container';
+    container.style.position = 'fixed';
+    container.style.top = '12px';
+    container.style.right = '12px';
+    container.style.zIndex = '100001';
+    container.style.pointerEvents = 'none';
     document.body.appendChild(container);
   }
 
@@ -739,6 +777,8 @@ function showToast(message) {
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.innerHTML = `<strong>${message}</strong>`;
+  toast.style.zIndex = '100002';
+  toast.style.pointerEvents = 'auto';
 
   // Append toast to container
   container.appendChild(toast);
@@ -759,21 +799,25 @@ window.addEventListener('message', async (event) => {
   const { action, data } = event.data || {};
 
   if (action === 'save-btn') {
-    uploadOverlay.style.display = 'none';
+    if (data && data.success) {
+      closeUploadOverlay();
+      await loadBooks();
+      await loadCategories();
+      renderSidebar();
+      renderDashboard();
+      showToast('Book added successfully!');
+    } else {
+      showToast('Upload failed. Please fill all fields and try again.');
+    }
+  }
 
-    // AUTO REFRESH DASHBOARD FROM API
-    await loadBooks();
-    await loadCategories();
-
-    // Re-render sidebar with updated counts
-    renderSidebar();
-    renderDashboard();
-
-    showToast('Book added successfully!');
+  if (action === 'upload-error') {
+    const msg = (event.data && event.data.message) ? event.data.message : 'Upload failed.';
+    showToast(msg);
   }
 
   if (action === 'cancel-btn') {
-    uploadOverlay.style.display = 'none';
+    closeUploadOverlay();
   }
 
   if (action === 'booking-changed') {

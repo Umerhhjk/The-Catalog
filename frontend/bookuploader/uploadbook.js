@@ -61,23 +61,47 @@ document.addEventListener("DOMContentLoaded", () => {
   if (uploadBtn) {
     uploadBtn.addEventListener("click", async () => {
   const bookData = {
-    title: document.getElementById("name")?.value || "",
-    author: document.getElementById("author")?.value || "",
-    publisher: document.getElementById("publisher")?.value || "",
-    category: document.getElementById("category")?.value || "",
-    genre: document.getElementById("genre")?.value || "",
-    publishDate: document.getElementById("publishDate")?.value || "",
-    language: document.getElementById("language")?.value || "",
+    title: document.getElementById("name")?.value.trim() || "",
+    author: document.getElementById("author")?.value.trim() || "",
+    publisher: document.getElementById("publisher")?.value.trim() || "",
+    category: document.getElementById("category")?.value.trim() || "",
+    genre: document.getElementById("genre")?.value.trim() || "",
+    publishDate: document.getElementById("publishDate")?.value.trim() || "",
+    language: document.getElementById("language")?.value.trim() || "",
     pages: parseInt(document.getElementById("pages")?.value, 10) || 0,
     copies: parseInt(document.getElementById("copies")?.value, 10) || 0,
-    description: document.getElementById("description")?.value || "",
-    imgLink: document.getElementById("imgLink")?.value || ""
+    description: document.getElementById("description")?.value.trim() || "",
+    imgLink: document.getElementById("imgLink")?.value.trim() || ""
   };
+
+  const allFilled = (
+    bookData.title &&
+    bookData.author &&
+    bookData.publisher &&
+    bookData.category &&
+    bookData.genre &&
+    bookData.publishDate &&
+    bookData.language &&
+    bookData.description &&
+    bookData.imgLink &&
+    bookData.pages > 0 &&
+    bookData.copies > 0
+  );
+
+  if (!allFilled) {
+    window.parent.postMessage({ action: "upload-error", message: "Please fill all fields." }, "*");
+    return;
+  }
 
   const result = await insertBook(bookData);
   console.log("FINAL RESULT:", result);
 
-  window.parent.postMessage({ action: "save-btn", data: result }, "*");
+  if (result && result.success) {
+    window.parent.postMessage({ action: "save-btn", data: result }, "*");
+  } else {
+    const msg = result && result.message ? result.message : "Upload failed. Please try again.";
+    window.parent.postMessage({ action: "upload-error", message: msg }, "*");
+  }
 });
   }
 
