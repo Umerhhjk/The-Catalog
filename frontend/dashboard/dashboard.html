@@ -12,21 +12,12 @@
 <body>
   <div class="app">
     <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidecard">
-        <div class="section-title">Home</div>
-        <nav class="nav">
-          <a class="nav-item active" href="#"><span class="label"><i class="fa-solid fa-gauge-high"></i>Dashboard</span></a>
-          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-books"></i>All Books</span><span class="count">190</span></a>
-        </nav>
-        <div class="section-title">Libraries</div>
-        <nav class="nav">
-          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-book-open-reader"></i>Novels</span><span class="count">159</span></a>
-          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-microchip"></i>Technology</span><span class="count">10</span></a>
-          <a class="nav-item" href="#"><span class="label"><i class="fa-solid fa-face-grin-beam"></i>Comics</span><span class="count">21</span></a>
-        </nav>
-      </div>
-    </aside>
+    <!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidecard">
+    <!-- Dynamic content will be inserted here by JavaScript -->
+  </div>
+</aside>
 
     <!-- Topbar -->
     <header class="topbar">
@@ -37,7 +28,7 @@
       <button class="icon-btn circle" id="hamburger" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
       <div class="search">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" placeholder="Title, Author, Series, Genre, or ISBN...">
+        <input type="text" placeholder="Search for a Book">
       </div>
       <div class="actions">
         <button class="icon-btn circle hint" id="addBookBtn" data-title="Add Book"><i class="fa-solid fa-plus"></i></button>
@@ -51,7 +42,7 @@
     <main class="main" id="mainArea">
       <section class="panel" id="continuePanel" style="margin-bottom:14px;">
         <div class="row-head">
-          <div class="row-title">No books available</div>
+          <div class="row-title">Loading books..</div>
         </div>
         <div class="progress-rail"><div class="progress-bar"></div></div>
         <div class="carousel" id="continueRow"></div>

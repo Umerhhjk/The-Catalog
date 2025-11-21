@@ -1,4 +1,3 @@
-
 let books = [];
 let categories = []; 
 
@@ -38,6 +37,152 @@ async function loadBooks() {
     console.error("Failed to load books:", err);
     books = [];
   }
+}
+
+// NEW FUNCTION: Search books by name
+async function searchBooks(query) {
+  try {
+    const res = await fetch(`https://library-backend-excpspbhaq-uc.a.run.app/api/books/search?name=${encodeURIComponent(query)}`);
+    const data = await res.json();
+
+    if (data.success && data.books) {
+      return data.books.map(b => ({
+        id: b.bookid,
+        title: b.name,
+        img: b.imglink || "",
+        category: b.category
+      }));
+    } else {
+      return [];
+    }
+  } catch (err) {
+    console.error("Failed to search books:", err);
+    return [];
+  }
+}
+
+// NEW FUNCTION: Render search results
+function renderSearchResults(query, searchResults) {
+  const main = document.getElementById('mainArea');
+
+  // Remove all generated panels
+  if (main) {
+    Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
+  }
+
+  // Hide continue panel
+  const continuePanel = document.getElementById('continuePanel');
+  if (continuePanel) {
+    continuePanel.style.display = 'none';
+  }
+
+  // Hide settings panel
+  if (typeof viewManager !== "undefined") {
+    try { viewManager._hide('settings'); } catch (e) {}
+  }
+
+  // Remove active state from sidebar items
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+  // Create search results panel
+  const panel = document.createElement('section');
+  panel.className = 'panel category-panel';
+  panel.style.marginBottom = '14px';
+
+  panel.innerHTML = `
+    <div class="row-head">
+      <div class="row-title">Results for ${query}</div>
+    </div>
+    <div class="carousel"></div>
+  `;
+
+  const row = panel.querySelector('.carousel');
+
+  if (searchResults.length === 0) {
+    row.innerHTML = '<div style="color:var(--muted);padding:20px;">No books found matching your search.</div>';
+  } else {
+    searchResults.forEach((book, i) => {
+      row.appendChild(createBookCard(book, i));
+    });
+  }
+
+  main.appendChild(panel);
+
+  // Update viewManager
+  if (typeof viewManager !== "undefined") {
+    viewManager.currentView = "search";
+    viewManager.previousView = "dashboard";
+  }
+}
+
+// NEW FUNCTION: Render dynamic sidebar
+function renderSidebar() {
+  const sidecard = document.querySelector('.sidebar .sidecard');
+  if (!sidecard) return;
+
+  // Count books per category
+  const categoryCounts = {};
+  books.forEach(book => {
+    const cat = book.category || 'Uncategorized';
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  });
+
+  const totalBooks = books.length;
+
+  // Build sidebar HTML
+  let sidebarHTML = `
+    <nav class="nav">
+      <a class="nav-item" id="allBooksItem" href="#" data-category="all">
+        <span class="label"><i class="fa-solid fa-books"></i>All Books</span>
+        <span class="count">${totalBooks}</span>
+      </a>
+  `;
+
+  // Add each category
+  categories.forEach(cat => {
+    const count = categoryCounts[cat] || 0;
+    sidebarHTML += `
+      <a class="nav-item" href="#" data-category="${cat}">
+        <span class="label"><i class="fa-solid fa-book-open-reader"></i>${cat}</span>
+        <span class="count">${count}</span>
+      </a>
+    `;
+  });
+
+  sidebarHTML += `</nav>`;
+  
+  sidecard.innerHTML = sidebarHTML;
+
+  // Attach click handlers
+  attachSidebarHandlers();
+}
+
+// NEW FUNCTION: Attach click handlers to sidebar items
+function attachSidebarHandlers() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      // Clear search input when navigating via sidebar
+      const searchInput = document.querySelector('.search input');
+      if (searchInput) searchInput.value = '';
+      
+      // Remove active class from all items
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      // Add active to clicked item
+      item.classList.add('active');
+      
+      const category = item.getAttribute('data-category');
+      
+      if (category === 'all') {
+        // Show all categories (full dashboard)
+        renderDashboard();
+      } else {
+        // Show single category
+        renderSingleCategory(category);
+      }
+    });
+  });
 }
 
 function createBookCard(book, idx) {
@@ -91,6 +236,11 @@ function renderDashboard() {
   if (main) {
     Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
   }
+
+  // Set All Books as active in sidebar
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  const allBooksItem = document.getElementById('allBooksItem');
+  if (allBooksItem) allBooksItem.classList.add('active');
 
   // If no books, show continue panel; otherwise show category panels
   if (books.length === 0) {
@@ -300,6 +450,33 @@ if (stored) {
     } else {  }
   } catch (e) {}
 
+  // NEW: Setup search functionality
+  const searchInput = document.querySelector('.search input');
+  if (searchInput) {
+    // Handle Enter key press
+    searchInput.addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        const query = searchInput.value.trim();
+        if (query) {
+          // Perform search
+          const searchResults = await searchBooks(query);
+          renderSearchResults(query, searchResults);
+        } else {
+          // If empty, show dashboard
+          renderDashboard();
+        }
+      }
+    });
+
+    // Optional: Clear search on Escape key
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        renderDashboard();
+      }
+    });
+  }
+
   const initialParams = new URLSearchParams(window.location.search);
   const initialId = initialParams.get('id');
   if (initialId) {
@@ -332,20 +509,6 @@ if (stored) {
         renderBookDetails(match);
       } else {
         renderDashboard();
-      }
-    });
-  });
-
-  document.querySelectorAll('.nav-item').forEach(a => {
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      const label = a.querySelector('.label');
-      if (label) {
-        const categoryName = label.textContent.trim();
-        // Only render single category if it's a known category
-        if (categories.includes(categoryName)) {
-          renderSingleCategory(categoryName);
-        }
       }
     });
   });
@@ -504,6 +667,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadBooks()
   ]);
 
+  // Render dynamic sidebar after loading data
+  renderSidebar();
+
   mount();
 });
 
@@ -594,6 +760,8 @@ window.addEventListener('message', async (event) => {
     await loadBooks();
     await loadCategories();
 
+    // Re-render sidebar with updated counts
+    renderSidebar();
     renderDashboard();
 
     showToast('Book added successfully!');
@@ -606,6 +774,8 @@ window.addEventListener('message', async (event) => {
   if (action === 'booking-changed') {
     // Reload books when booking status changes
     await loadBooks();
+    // Update sidebar counts
+    renderSidebar();
   }
 
 if (action === 'close-bookdetails') {
@@ -618,6 +788,8 @@ if (action === 'close-bookdetails') {
     await loadBooks();
     await loadCategories();
 
+    // Re-render sidebar with updated counts
+    renderSidebar();
     // Render updated dashboard
     renderDashboard();
 
