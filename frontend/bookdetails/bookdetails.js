@@ -1,5 +1,12 @@
 const API_BASE = "https://library-backend-excpspbhaq-uc.a.run.app";
 
+// ====================================================================
+// GLOBAL FLAGS - Must be declared before any function uses them
+// ====================================================================
+let isProcessing = false;  // Flag to prevent multiple rapid clicks
+let bookingListenerAttached = false;  // Track if booking event listener is attached
+let wishlistListenerAttached = false;  // Track if wishlist event listener is attached
+
 // -----------------------------
 // Utilities
 // -----------------------------
@@ -121,6 +128,7 @@ let Book = {};
 let Author = {};
 let Publisher = {};
 let userData = { booked: 0, pendingreturn: 0, personalRating: 0, wishlisted: 0 };
+let previousBookingState = { booked: 0, pendingreturn: 0 };  // Track previous state for return detection
 
 // -----------------------------
 // Main data loader (revised)
@@ -218,16 +226,21 @@ async function loadRealBookData() {
       Book.UsersRated = 0;
     }
 
-    // Current user personal rating (if any)
-const currentUser = JSON.parse(
+
+
+    // Current user data (rating, booking status, wishlist status)
+  const currentUser = JSON.parse(
   sessionStorage.getItem("selectedUser") ||
   localStorage.getItem("selectedUser") ||
   "null"
 );
 
 if (currentUser) {
+  const userId = currentUser.userid;
+  
+  // FETCH PERSONAL RATING
   try {
-    const res = await fetch(`${API_BASE}/api/reviews?book_id=${bookId}&user_id=${currentUser.userid}`);
+    const res = await fetch(`${API_BASE}/api/reviews?book_id=${bookId}&user_id=${userId}`);
 
     if (res.status === 404) {
       console.warn("NO USER RATING (404), SET 0");
@@ -254,20 +267,100 @@ if (currentUser) {
     console.warn("ERROR GETTING PERSONAL RATING:", err);
     userData.personalRating = 0;
   }
+
+  // FETCH BOOKING STATUS FOR THIS BOOK
+  try {
+    const bookingRes = await fetchJson(`${API_BASE}/api/bookings?user_id=${userId}&book_id=${bookId}`);
+    
+    console.log("RAW BOOKING RESPONSE:", bookingRes);
+    console.log("Looking for bookId:", bookId, "userId:", userId);
+    
+    if (bookingRes.success && bookingRes.bookings && bookingRes.bookings.length > 0) {
+      // Filter to find booking for THIS SPECIFIC BOOK (in case API returns all bookings)
+      const booking = bookingRes.bookings.find(b => String(b.bookid) === String(bookId));
+      
+      if (booking) {
+        console.log("BOOKING FOUND FOR THIS BOOK:", booking);
+        
+        // Use the correct field names from actual API response
+        const isCurrentlyBooked = booking.currentlybookedindicator || false;
+        const isPendingReturn = booking.pendingreturnindicator || false;
+        
+        userData.booked = isCurrentlyBooked ? 1 : 0;
+        userData.pendingreturn = isPendingReturn ? 1 : 0;
+        userData.bookingId = booking.bookingid;
+        
+        // DETECT IF BOOK WAS RETURNED BY ADMIN
+        // If previously booked/pending, but now not booked and not pending = admin approved return
+        if ((previousBookingState.booked === 1 || previousBookingState.pendingreturn === 1) &&
+            userData.booked === 0 && userData.pendingreturn === 0) {
+          console.log("BOOK WAS RETURNED BY ADMIN - Backend already incremented copies, displaying fresh data");
+        }
+        
+        console.log("BOOKING STATUS PARSED - booked:", userData.booked, "pendingreturn:", userData.pendingreturn, "bookingId:", userData.bookingId);
+      } else {
+        console.log("NO BOOKING FOUND FOR THIS SPECIFIC BOOK (bookid:" + bookId + ")");
+        // If previously had a booking but now no booking found = return completed
+        if (previousBookingState.booked === 1 || previousBookingState.pendingreturn === 1) {
+          console.log("BOOKING RECORD DELETED - Return was approved by admin. Showing updated copies from DB");
+        }
+        userData.booked = 0;
+        userData.pendingreturn = 0;
+      }
+    } else {
+      console.log("NO ACTIVE BOOKINGS FOUND AT ALL");
+      userData.booked = 0;
+      userData.pendingreturn = 0;
+    }
+  } catch (err) {
+    console.warn("ERROR FETCHING BOOKING STATUS:", err);
+    userData.booked = 0;
+    userData.pendingreturn = 0;
+  }
+  
+  // Update previous state for next comparison
+  previousBookingState = { booked: userData.booked, pendingreturn: userData.pendingreturn };
+
+  // FETCH WISHLIST STATUS FOR THIS BOOK
+  try {
+    const wishRes = await fetchJson(`${API_BASE}/api/reservations?user_id=${userId}&book_id=${bookId}`);
+    
+    console.log("RAW WISHLIST RESPONSE:", wishRes);
+    
+    if (wishRes.success && wishRes.reservations && wishRes.reservations.length > 0) {
+      const reservation = wishRes.reservations[0];
+      console.log("FIRST RESERVATION RECORD:", reservation);
+      userData.wishlisted = 1;
+      userData.reservationId = reservation.reservationid || reservation.ReservationId || reservation.reservation_id;
+      console.log("WISHLIST STATUS FETCHED: wishlisted, reservationId:", userData.reservationId);
+    } else {
+      console.log("NO WISHLIST FOUND FOR THIS BOOK");
+      userData.wishlisted = 0;
+    }
+  } catch (err) {
+    console.warn("ERROR FETCHING WISHLIST STATUS:", err);
+    userData.wishlisted = 0;
+  }
 }
 
 
     // INITIALIZE UI AFTER DATA READY
     // ⭐ Apply user rating before UI initializes
 
-
-
     initDOM();
+    
+    // Start auto-reload if there's a pending return
+    if (userData.pendingreturn === 1) {
+      startAutoReload();
+    } else {
+      stopAutoReload();
+    }
   } catch (err) {
     console.error("Failed to load book:", err);
   } finally {
     hideLoadingOverlay();
   }
+
 }
 
 // -----------------------------
@@ -278,6 +371,7 @@ function initDOM() {
   function populateDetails() {
     const imgEl = document.getElementById("book-img");
     setCoverImageSafely(imgEl, Book.ImgLink, "../placeholder.png");
+
 
     document.getElementById("book-name").textContent = Book.Name || "";
     document.getElementById("book-author").textContent =
@@ -333,102 +427,60 @@ function initDOM() {
 
   updateButtonState();
 
-  // ====================================================================
-  // BOOKING LOGIC
-  // ====================================================================
-  if (bookButton) {
-    bookButton.addEventListener("click", () => {
-      const isBooking =
-        userData.booked === 0 &&
-        userData.pendingreturn === 0 &&
-        (Book.CopiesAvailable ?? 0) > 0;
-
-      const isReturnRequest =
-        userData.booked === 1 && userData.pendingreturn === 0;
-
-      // BOOK
-      if (isBooking) {
-        (async () => {
-          try {
-            const currentUser = JSON.parse(
-              sessionStorage.getItem("selectedUser") ||
-                localStorage.getItem("selectedUser") ||
-                "null"
-            );
-            if (!currentUser) return showToast("Error", "Please sign in");
-
-            const userId = currentUser.userid;
-            const bookId = Book.BookId;
-
-            const due = new Date();
-            due.setDate(due.getDate() + 14);
-            const dueDate = due.toISOString().replace("T", " ").split(".")[0];
-
-            const bookingRes = await fetchJson(
-              `${API_BASE}/api/bookings`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ UserId: userId, BookId: bookId, dueDate }),
-              }
-            );
-
-            userData.booked = 1;
-            userData.pendingreturn = 0;
-            userData.bookingId = bookingRes.booking_id;
-            Book.CopiesAvailable = (Book.CopiesAvailable ?? 1) - 1;
-
-            populateDetails();
-            updateButtonState();
-            showToast("Booked", "Successfully booked");
-          } catch (e) {
-            showToast("Error", "Booking failed");
-          }
-        })();
-        return;
-      }
-
-      // RETURN REQUEST
-      if (isReturnRequest) {
-        (async () => {
-          try {
-            await fetchJson(
-              `${API_BASE}/api/bookings/${userData.bookingId}`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  CurrentlyBookedIndicator: false,
-                  pendingReturnIndicator: true,
-                }),
-              }
-            );
-
-            userData.pendingreturn = 1;
-            updateButtonState();
-            showToast("Return Request", "Sent to admin");
-          } catch (e) {
-            showToast("Error", "Return failed");
-          }
-        })();
-      }
-    });
-  }
-
-  // ====================================================================
-  // WISHLIST LOGIC
-  // ====================================================================
+  // Initialize wishlist UI state immediately
   function updateWishlistUI() {
     if (!wishlistButton) return;
+    
+    // Disable wishlist if book is currently booked
+    if (userData.booked === 1) {
+      wishlistButton.disabled = true;
+      wishlistButton.title = "Cannot wishlist a booked book. Return the book first.";
+    } else {
+      wishlistButton.disabled = false;
+      wishlistButton.title = userData.wishlisted ? "Remove from wishlist" : "Add to wishlist";
+    }
+    
     if (userData.wishlisted) wishlistButton.classList.add("active");
     else wishlistButton.classList.remove("active");
   }
 
-  if (wishlistButton) {
-    wishlistButton.addEventListener("click", () => {
-      userData.wishlisted = userData.wishlisted ? 0 : 1;
-      updateWishlistUI();
+  updateWishlistUI();
 
+  // Attach event listeners (only once)
+  attachBookingListener();
+  attachWishlistListener();
+
+// ====================================================================
+// BOOKING LOGIC
+// ====================================================================
+
+function attachBookingListener() {
+  if (bookingListenerAttached) return;  // Don't attach twice
+  
+  const bookButton = document.getElementById("book-button");
+  
+  if (!bookButton) return;
+  
+  bookButton.addEventListener("click", () => {
+    // Prevent multiple rapid clicks
+    if (isProcessing) {
+      console.warn("Request already in progress");
+      return;
+    }
+    
+    const isBooking =
+      userData.booked === 0 &&
+      userData.pendingreturn === 0 &&
+      (Book.CopiesAvailable ?? 0) > 0;
+
+    const isReturnRequest =
+      userData.booked === 1 && userData.pendingreturn === 0;
+
+    // BOOK
+    if (isBooking) {
+      isProcessing = true;
+      bookButton.disabled = true;
+      
       (async () => {
         try {
           const currentUser = JSON.parse(
@@ -436,35 +488,159 @@ function initDOM() {
               localStorage.getItem("selectedUser") ||
               "null"
           );
-          if (!currentUser) return showToast("Error", "Sign in first");
+          if (!currentUser) {
+            showToast("Error", "Please sign in");
+            return;
+          }
 
           const userId = currentUser.userid;
           const bookId = Book.BookId;
 
-          if (userData.wishlisted) {
-            const data = await fetchJson(`${API_BASE}/api/reservations`, {
+          const due = new Date();
+          due.setDate(due.getDate() + 14);
+          const dueDate = due.toISOString().replace("T", " ").split(".")[0];
+
+          const bookingRes = await fetchJson(
+            `${API_BASE}/api/bookings`,
+            {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ UserId: userId, BookId: bookId }),
-            });
-
-            userData.reservationId = data.reservation_id;
-            showToast("Wishlisted", "Book added");
-          } else {
-            if (userData.reservationId) {
-              await fetchJson(
-                `${API_BASE}/api/reservations/${userData.reservationId}`,
-                { method: "DELETE" }
-              );
+              body: JSON.stringify({ UserId: userId, BookId: bookId, dueDate }),
             }
-            showToast("Removed", "Book removed");
+          );
+
+          // Update local state IMMEDIATELY for UI feedback
+          userData.booked = 1;
+          userData.pendingreturn = 0;
+          userData.bookingId = bookingRes.booking_id;
+          Book.CopiesAvailable = (Book.CopiesAvailable ?? 1) - 1;
+
+          // Update the book copies in the database
+          try {
+            const updateRes = await fetchJson(`${API_BASE}/api/books/${bookId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ copiesavailable: Book.CopiesAvailable })
+            });
+            console.log("Book copies updated in DB - Response:", updateRes);
+            
+            // Re-fetch book data to ensure we have the correct copies from database
+            await loadRealBookData();
+          } catch (copyUpdateErr) {
+            console.error("Failed to update book copies in DB:", copyUpdateErr);
+            // Still reload to get correct state from DB even if update failed
+            await loadRealBookData();
           }
+          
+          showToast("Booked", "Successfully booked");
+          
+          // Notify parent that booking status changed (for cross-tab sync)
+          window.parent.postMessage({ action: "booking-changed" }, "*");
         } catch (e) {
-          showToast("Error", "Wishlist failed");
+          showToast("Error", "Booking failed");
+        } finally {
+          isProcessing = false;
+          bookButton.disabled = false;
         }
       })();
-    });
-  }
+      return;
+    }
+
+    // RETURN REQUEST
+    if (isReturnRequest) {
+      isProcessing = true;
+      bookButton.disabled = true;
+      
+      (async () => {
+        try {
+          await fetchJson(
+            `${API_BASE}/api/bookings/${userData.bookingId}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                CurrentlyBookedIndicator: false,
+                pendingReturnIndicator: true,
+              }),
+            }
+          );
+
+          // Update local state IMMEDIATELY for UI feedback
+          userData.pendingreturn = 1;
+          updateButtonState();
+          updateWishlistUI();
+          showToast("Return Request", "Sent to admin");
+          
+          // Notify parent that booking status changed (for cross-tab sync)
+          window.parent.postMessage({ action: "booking-changed" }, "*");
+        } catch (e) {
+          showToast("Error", "Return failed");
+        } finally {
+          isProcessing = false;
+          bookButton.disabled = false;
+        }
+      })();
+    }
+  });
+  
+  bookingListenerAttached = true;
+}
+
+function attachWishlistListener() {
+  if (wishlistListenerAttached) return;  // Don't attach twice
+  
+  const wishlistButton = document.getElementById("wishlist-button");
+  
+  if (!wishlistButton) return;
+  
+  wishlistButton.addEventListener("click", () => {
+    // Prevent action if book is booked
+    if (userData.booked === 1) {
+      showToast("Cannot Wishlist", "Return the book first to add to wishlist");
+      return;
+    }
+    
+    userData.wishlisted = userData.wishlisted ? 0 : 1;
+    updateWishlistUI();
+
+    (async () => {
+      try {
+        const currentUser = JSON.parse(
+          sessionStorage.getItem("selectedUser") ||
+            localStorage.getItem("selectedUser") ||
+            "null"
+        );
+        if (!currentUser) return showToast("Error", "Sign in first");
+
+        const userId = currentUser.userid;
+        const bookId = Book.BookId;
+
+        if (userData.wishlisted) {
+          const data = await fetchJson(`${API_BASE}/api/reservations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ UserId: userId, BookId: bookId }),
+          });
+
+          userData.reservationId = data.reservation_id;
+          showToast("Wishlisted", "Book added");
+        } else {
+          if (userData.reservationId) {
+            await fetchJson(
+              `${API_BASE}/api/reservations/${userData.reservationId}`,
+              { method: "DELETE" }
+            );
+          }
+          showToast("Removed", "Book removed");
+        }
+      } catch (e) {
+        showToast("Error", "Wishlist failed");
+      }
+    })();
+  });
+  
+  wishlistListenerAttached = true;
+}
 
   // ====================================================================
 // STAR RATING
@@ -593,6 +769,56 @@ stars.forEach((star) => {
     });
   }, 50);
 }
+
+// ====================================================================
+// MESSAGE LISTENER FOR RELOAD FROM PARENT
+// ====================================================================
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'reload-book-data') {
+    console.log("RECEIVED RELOAD MESSAGE - Reloading book data...");
+    // Reload the book data when coming back from settings
+    stopAutoReload();
+    loadRealBookData();
+  }
+});
+
+// Listen for storage events to reload when user data changes in other tabs
+window.addEventListener('storage', (event) => {
+  if (event.key === 'booking-status-changed') {
+    console.log("BOOKING STATUS CHANGED IN ANOTHER TAB - Reloading book data...");
+    loadRealBookData();
+  }
+});
+
+// ====================================================================
+// AUTO-RELOAD FOR PENDING RETURNS (check every 30 seconds)
+// ====================================================================
+let autoReloadInterval = null;
+
+function startAutoReload() {
+  if (autoReloadInterval) return; // Already running
+  
+  autoReloadInterval = setInterval(() => {
+    // Only reload if there's a pending return
+    if (userData.pendingreturn === 1) {
+      console.log("Auto-checking for admin approval of return...");
+      loadRealBookData();
+    }
+  }, 30000); // Check every 30 seconds
+  
+  console.log("Auto-reload started for pending returns");
+}
+
+function stopAutoReload() {
+  if (autoReloadInterval) {
+    clearInterval(autoReloadInterval);
+    autoReloadInterval = null;
+    console.log("Auto-reload stopped");
+  }
+}
+
+// After loadRealBookData completes, start auto-reload if there's a pending return
+// This will be added to the end of loadRealBookData
 
 // -----------------------------
 // Start loading

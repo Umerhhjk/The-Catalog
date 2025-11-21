@@ -774,12 +774,21 @@ def update_booking(booking_id):
         cur.execute('SELECT CurrentlyBookedIndicator, pendingReturnIndicator, UserId, BookId FROM Bookings WHERE BookingId = %s', (updated_booking_id,))
         row = cur.fetchone()
         if row:
-            currently_booked = row[0]
-            pending_return = row[1]
+            currently_booked = bool(row[0])
+            pending_return = bool(row[1])
             uid = row[2]
             bid = row[3]
 
             if (not currently_booked) and (not pending_return):
+                # Admin approved return - INCREMENT copies in Books table
+                cur.execute('SELECT copiesavailable FROM Books WHERE BookId = %s', (bid,))
+                book_row = cur.fetchone()
+                if book_row:
+                    current_copies = book_row[0]
+                    new_copies = current_copies + 1
+                    cur.execute('UPDATE Books SET copiesavailable = %s WHERE BookId = %s', (new_copies, bid))
+                    print(f"Return approved: BookId {bid} copies incremented from {current_copies} to {new_copies}")
+                
                 # Move to transactions (ReservedIndicator = False)
                 transaction_date = datetime.now()
                 cur.execute('''
@@ -789,6 +798,7 @@ def update_booking(booking_id):
                 # Delete the booking record
                 cur.execute('DELETE FROM Bookings WHERE BookingId = %s', (updated_booking_id,))
                 conn.commit()
+                print(f"Return completed: Booking {updated_booking_id} moved to history and deleted")
         cur.close()
         conn.close()
         

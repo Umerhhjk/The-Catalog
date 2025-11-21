@@ -176,7 +176,7 @@ const SettingsPanel = (() => {
             const r = await fetch(`${API_BASE}/api/bookings/${id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pendingReturnIndicator: false })
+              body: JSON.stringify({ pendingReturnIndicator: false,  CurrentlyBookedIndicator: false,})
             });
 
             const res = await r.json();
@@ -184,6 +184,22 @@ const SettingsPanel = (() => {
             if (r.ok && res.success) {
               btn.disabled = true;
               btn.textContent = 'Approved';
+              
+              // CRITICAL: Reload books data in dashboard
+              if (typeof loadBooks === 'function') {
+                await loadBooks();
+              }
+              
+              // CRITICAL: Trigger reload in bookdetails iframe if it's open
+              const iframesInPage = document.querySelectorAll('iframe');
+              iframesInPage.forEach(iframe => {
+                try {
+                  iframe.contentWindow.postMessage({ action: 'reload-book-data' }, '*');
+                } catch (e) {
+                  console.warn('Could not post message to iframe:', e);
+                }
+              });
+              
               localStorage.setItem('catalog-event', 'return-approved:' + Date.now());
 
               loadPendingRequests();

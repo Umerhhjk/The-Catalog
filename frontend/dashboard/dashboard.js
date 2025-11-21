@@ -383,18 +383,23 @@ if (stored) {
         const continuePanel = document.getElementById('continuePanel');
         const recentPanel = document.getElementById('recentPanel');
         const settingsPanel = document.getElementById('settingsPanel');
-        if (continuePanel) continuePanel.style.display = '';
+        const detailsPanel = document.getElementById('detailsPanel');
+        // Only show continuePanel if there are no books
+        if (continuePanel) continuePanel.style.display = books.length === 0 ? 'block' : 'none';
         if (recentPanel) recentPanel.style.display = '';
         if (settingsPanel) settingsPanel.style.display = 'none';
+        if (detailsPanel) detailsPanel.style.display = 'none';
       }  else if (viewName === 'settings') {
         const continuePanel = document.getElementById('continuePanel');
         const recentPanel = document.getElementById('recentPanel');
         const settingsPanel = document.getElementById('settingsPanel');
+        const detailsPanel = document.getElementById('detailsPanel');
         const main = document.getElementById('mainArea');
         
-        // Hide dashboard panels
+        // Hide dashboard panels and book details
         if (continuePanel) continuePanel.style.display = 'none';
         if (recentPanel) recentPanel.style.display = 'none';
+        if (detailsPanel) detailsPanel.style.display = 'none';
         
         // Also hide category panels
         if (main) {
@@ -430,9 +435,21 @@ if (stored) {
       this.previousView = null;
       this.currentView = target;
       
-      // Render dashboard content BEFORE showing it
+      // Render appropriate view based on target
       if (target === 'dashboard') {
         renderDashboard();
+        this._show('dashboard');
+      } else if (target === 'bookdetails') {
+        // Going back to book details - reload the data in the iframe
+        const detailsPanel = document.getElementById('detailsPanel');
+        if (detailsPanel) {
+          detailsPanel.style.display = 'block';
+          // Send message to iframe to reload book data
+          const iframe = detailsPanel.querySelector('iframe');
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ action: 'reload-book-data' }, '*');
+          }
+        }
       } else {
         this._show(this.currentView);
       }
@@ -443,6 +460,13 @@ if (stored) {
 
   const settingsBtn = document.getElementById('settingsBtn');
   const backBtn = document.getElementById('backBtn');
+
+  // Settings button
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      viewManager.navigateTo('settings');
+    });
+  }
 
   // Back button
   if (backBtn) {
@@ -577,6 +601,11 @@ window.addEventListener('message', async (event) => {
 
   if (action === 'cancel-btn') {
     uploadOverlay.style.display = 'none';
+  }
+
+  if (action === 'booking-changed') {
+    // Reload books when booking status changes
+    await loadBooks();
   }
 
 if (action === 'close-bookdetails') {
