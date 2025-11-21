@@ -50,13 +50,10 @@ async function handleLogin(e) {
             showNotification('success', 'Login Successful', 'Redirecting to dashboard...');
             localStorage.setItem('currentUser', JSON.stringify(data.user));
 
-            // ==========================================================
-            //   ADDED: store numeric userId for dashboard consumption
-            // ==========================================================
-            if (data.user && data.user.id !== undefined) {
-                localStorage.setItem('currentUserId', data.user.id);
+            if (data.user && (data.user.userid !== undefined || data.user.UserId !== undefined)) {
+                const uid = data.user.userid ?? data.user.UserId;
+                localStorage.setItem('currentUserId', uid);
             }
-            // ==========================================================
 
             setTimeout(() => {
                 window.location.replace('dashboard/dashboard.html');

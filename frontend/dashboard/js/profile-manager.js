@@ -1,214 +1,169 @@
 // ========================
 // PROFILE MANAGER MODULE
 // ========================
-// Handles all profile-related functionality:
-// - Profile editing
-// - Password changes
-// - Profile updates to backend
+// Handles profile editing + updates
 
 const ProfileManager = (() => {
-  // Initialize profile management
-  function init() {
-    const editProfileBtn = document.getElementById('editProfileBtn');
-    const cancelEditBtn = document.getElementById('cancelEditBtn');
-    const saveEditBtn = document.getElementById('saveEditBtn');
-    const changePasswordBtn = document.getElementById('changePasswordBtn');
-    const currentPasswordInput = document.getElementById('currentPassword');
-    const newPasswordInput = document.getElementById('newPassword');
-    const confirmPasswordInput = document.getElementById('confirmPassword');
-    const modalSection = document.querySelector('.modal-section');
+    const API_URL = "https://library-backend-excpspbhaq-uc.a.run.app/api";
 
-    // Profile editing events
-    if (editProfileBtn) {
-      editProfileBtn.addEventListener('click', enterEditMode);
-    }
-    if (cancelEditBtn) {
-      cancelEditBtn.addEventListener('click', exitEditMode);
-    }
-    if (saveEditBtn) {
-      saveEditBtn.addEventListener('click', saveProfileChanges);
+    async function init() {
+        const userId = localStorage.getItem('currentUserId');
+
+        if (!userId) {
+            console.error("No logged-in user found.");
+            return;
+        }
+
+        await loadUserProfile(userId);
+
+        document.getElementById("editProfileBtn")?.addEventListener("click", enterEditMode);
+        document.getElementById("cancelEditBtn")?.addEventListener("click", exitEditMode);
+        document.getElementById("saveEditBtn")?.addEventListener("click", saveProfileChanges);
+
+        const changeBtn = document.getElementById("changePasswordBtn");
+        if (changeBtn) changeBtn.addEventListener("click", handleChangePassword);
     }
 
-    // Password change events
-    if (changePasswordBtn) {
-      changePasswordBtn.addEventListener('click', handleChangePassword);
+    async function loadUserProfile(userId) {
+        try {
+            const response = await fetch(`${API_URL}/users?user_id=${userId}`);
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                console.error("Failed to load user from DB");
+                return;
+            }
+
+            const user = data.user;
+
+            localStorage.setItem('currentUser', JSON.stringify({
+                userid: user.userid,
+                username: user.username,
+                email: user.email,
+                adminindicator: user.adminindicator
+            }));
+
+            const usernameEl = document.getElementById("profileUsername");
+            if (usernameEl) usernameEl.textContent = user.username;
+            const emailEl = document.getElementById("profileEmail");
+            if (emailEl) emailEl.textContent = user.email;
+            const roleEl = document.getElementById("profileRole");
+            if (roleEl) roleEl.textContent = user.adminindicator ? "Librarian" : "Student";
+
+            const editEmailEl = document.getElementById("editEmail");
+            if (editEmailEl) editEmailEl.value = user.email;
+            const editUsernameEl = document.getElementById("editUsername");
+            if (editUsernameEl) editUsernameEl.value = user.username;
+
+        } catch (err) {
+            console.error("Error loading profile:", err);
+        }
     }
 
-    // Add Enter key support for password form
-    [currentPasswordInput, newPasswordInput, confirmPasswordInput].forEach(input => {
-      if (input) {
-        input.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            handleChangePassword();
-          }
-        });
-      }
-    });
-
-    // Helper references
-    const editFullname = document.getElementById('editFullname');
-    const editEmail = document.getElementById('editEmail');
-
-    // Enter edit mode
     function enterEditMode() {
-      modalSection.classList.add('edit-mode');
-      const stored = localStorage.getItem('currentUser');
-      if (stored) {
-        const user = JSON.parse(stored);
-        editFullname.value = user.fullName || '';
-        editEmail.value = user.email || '';
-      }
+        document.querySelector(".modal-section")?.classList.add("edit-mode");
     }
 
-    // Exit edit mode
     function exitEditMode() {
-      modalSection.classList.remove('edit-mode');
-      editFullname.value = '';
-      editEmail.value = '';
+        document.querySelector(".modal-section")?.classList.remove("edit-mode");
     }
 
-    // Save profile changes
-    function saveProfileChanges() {
-      const fullName = editFullname.value.trim();
-      const email = editEmail.value.trim();
+    async function saveProfileChanges() {
+        const email = document.getElementById("editEmail").value.trim();
+        const username = document.getElementById("editUsername").value.trim();
+        const userId = localStorage.getItem("currentUserId");
 
-      // Basic validation
-      if (!fullName) {
-        alert('Full name is required');
-        return;
-      }
-      if (!email) {
-        alert('Email is required');
-        return;
-      }
-      if (!email.includes('@')) {
-        alert('Please enter a valid email address');
-        return;
-      }
-
-      // Update user data in localStorage
-      try {
-        const stored = localStorage.getItem('currentUser');
-        if (stored) {
-          const user = JSON.parse(stored);
-          user.fullName = fullName;
-          user.email = email;
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          
-          // Update display
-          document.getElementById('profileFullname').textContent = fullName;
-          document.getElementById('profileEmail').textContent = email;
-          
-          // Call backend API to update profile
-          updateUserProfile(user);
-          
-          exitEditMode();
+        if (!email || !username) {
+            alert("Email and username are required");
+            return;
         }
-      } catch (e) {
-        console.error('Error saving profile:', e);
-        alert('Error saving profile changes');
-      }
+
+        try {
+            const response = await fetch(`${API_URL}/users/${userId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    Username: username,
+                    Email: email
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                alert("Failed to update profile");
+                return;
+            }
+
+            // Reload current user from DB
+            await loadUserProfile(userId);
+
+            exitEditMode();
+
+        } catch (err) {
+            console.error("Error updating profile:", err);
+        }
     }
 
-    // Handle password change
     async function handleChangePassword() {
-      const currentPassword = currentPasswordInput.value.trim();
-      const newPassword = newPasswordInput.value.trim();
-      const confirmPassword = confirmPasswordInput.value.trim();
-      const passwordError = document.getElementById('passwordError');
+        const currentPassword = document.getElementById("currentPassword")?.value.trim();
+        const newPassword = document.getElementById("newPassword")?.value.trim();
+        const confirmPassword = document.getElementById("confirmPassword")?.value.trim();
+        const errorEl = document.getElementById("passwordError");
 
-      // Clear previous errors
-      hidePasswordError();
+        const user = (() => { try { return JSON.parse(localStorage.getItem('currentUser')||'{}'); } catch { return {}; } })();
+        const username = user.username || user.Username;
 
-      // Use validation function from authentication.js
-      const validation = validateChangePasswordForm(currentPassword, newPassword, confirmPassword);
-      if (!validation.isValid) {
-        showPasswordError(validation.message);
-        return;
-      }
-
-      // Set loading state
-      const originalText = changePasswordBtn.innerHTML;
-      changePasswordBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left:8px;">Changing...</span>';
-      changePasswordBtn.disabled = true;
-
-      try {
-        // Get current user
-        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        if (!currentUser || !currentUser.username) {
-          throw new Error('User session not found');
+        if (!username) {
+            if (errorEl) { errorEl.textContent = 'Not logged in. Please re-login.'; errorEl.style.display = 'block'; }
+            return;
         }
 
-        // Use API function from authentication.js
-        const response = await changePasswordAPI(currentUser.username, currentPassword, newPassword);
-        const data = await response.json();
+        const validation = typeof validateChangePasswordForm === 'function'
+            ? validateChangePasswordForm(currentPassword, newPassword, confirmPassword)
+            : { isValid: !!(currentPassword && newPassword && confirmPassword), message: 'All fields are required' };
 
-        if (response.ok && data.success) {
-          // Success - clear form and show success message
-          currentPasswordInput.value = '';
-          newPasswordInput.value = '';
-          confirmPasswordInput.value = '';
-          showPasswordError('Password changed successfully!');
-          passwordError.style.color = '#22c55e';
-          
-          // Hide success message after 3 seconds
-          setTimeout(() => {
-            hidePasswordError();
-          }, 3000);
-        } else {
-          showPasswordError(data.message || 'Failed to change password');
+        if (!validation.isValid) {
+            if (errorEl) { errorEl.textContent = validation.message; errorEl.style.display = 'block'; }
+            return;
         }
-      } catch (error) {
-        console.error('Password change error:', error);
-        showPasswordError('Server error. Please try again.');
-      } finally {
-        // Reset button state
-        changePasswordBtn.innerHTML = originalText;
-        changePasswordBtn.disabled = false;
-      }
+
+        try {
+            const resp = await (typeof changePasswordAPI === 'function'
+                ? changePasswordAPI(username, currentPassword, newPassword)
+                : fetch(`${API_URL}/change-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, currentPassword, newPassword })
+                }));
+
+            const data = await resp.json();
+            if (resp.ok && data.success) {
+                if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+                if (typeof showNotification === 'function') {
+                    showNotification('success', 'Password Changed', 'Your password has been updated.');
+                }
+                const cp = document.getElementById("currentPassword");
+                const np = document.getElementById("newPassword");
+                const cfp = document.getElementById("confirmPassword");
+                if (cp) cp.value = '';
+                if (np) np.value = '';
+                if (cfp) cfp.value = '';
+            } else {
+                const msg = data && data.message ? data.message : 'Failed to change password';
+                if (errorEl) { errorEl.textContent = msg; errorEl.style.display = 'block'; }
+                if (typeof showNotification === 'function') {
+                    showNotification('error', 'Change Password Failed', msg);
+                }
+            }
+        } catch (err) {
+            console.error('Change password error:', err);
+            if (errorEl) { errorEl.textContent = 'Server unreachable. Please try again.'; errorEl.style.display = 'block'; }
+            if (typeof showNotification === 'function') {
+                showNotification('error', 'Change Password Failed', 'Server unreachable. Please try again.');
+            }
+        }
     }
 
-    // Show password error message
-    function showPasswordError(message) {
-      const passwordError = document.getElementById('passwordError');
-      passwordError.textContent = message;
-      passwordError.style.display = 'block';
-    }
-
-    // Hide password error message
-    function hidePasswordError() {
-      const passwordError = document.getElementById('passwordError');
-      passwordError.style.display = 'none';
-    }
-  }
-
-  // Update user profile on backend
-  async function updateUserProfile(user) {
-    try {
-      const response = await fetch('/api/update-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: user.username,
-          fullName: user.fullName,
-          email: user.email
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-    } catch (error) {
-      console.error('Error updating profile on server:', error);
-      // Note: We don't show an error to user since localStorage was updated
-    }
-  }
-
-  // Public API
-  return {
-    init,
-    updateUserProfile
-  };
+    return { init };
 })();

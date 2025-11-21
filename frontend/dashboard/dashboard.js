@@ -383,9 +383,6 @@ function renderBookDetails(book) {
 }
 
 
-
-
-
 function navigateTo(search) {
   const params = new URLSearchParams(search.startsWith('?') ? search.substring(1) : search);
   const id = params.get('id');
@@ -409,17 +406,21 @@ function navigateTo(search) {
 function mount() {
   try {
     const stored = localStorage.getItem('currentUser');
-const uEl = document.getElementById('profileUsername');
-const nEl = document.getElementById('profileFullname');
-const eEl = document.getElementById('profileEmail');
+    const uEl = document.getElementById('profileUsername');
+    const nEl = document.getElementById('profileFullname');
+    const eEl = document.getElementById('profileEmail');
 
-const addBookBtn = document.getElementById('addBookBtn');
-const settingsBtn = document.getElementById('settingsBtn');
-const profileBtn = document.getElementById('profileBtn');
-const logoutBtn = document.getElementById('logoutBtn');
+  const addBookBtn = document.getElementById('addBookBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const profileBtn = document.getElementById('profileBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
 
 if (stored) {
   const user = JSON.parse(stored);
+
+  if (user.userid || user.UserId) {
+    localStorage.setItem('currentUserId', user.userid || user.UserId);
+  }
 
   // Set profile info
   if (uEl && user.username) uEl.textContent = user.username;
@@ -532,7 +533,11 @@ if (stored) {
   const overlay = document.getElementById('profileOverlay');
   const profileBtn = document.getElementById('profileBtn');
   const profileClose = document.getElementById('profileClose');
-  function openProfile(){ overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false'); }
+
+  function openProfile(){ 
+    overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false'); 
+  }
+
   function closeProfile(){ overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true'); }
   profileBtn.addEventListener('click', openProfile);
   profileClose.addEventListener('click', closeProfile);

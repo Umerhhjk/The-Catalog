@@ -202,6 +202,10 @@ body {
 .modal-section { margin-bottom: 12px; }
 .modal-actions { display: flex; justify-content: flex-start; padding: 0 12px 12px; }
 .close-btn { background: transparent; border: 1px solid #2a3a40; color: #cbd5d1; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; cursor: pointer; }
+.modal-section .profile-display { display: block; }
+.modal-section .profile-edit { display: none; }
+.modal-section.edit-mode .profile-edit { display: block; }
+.modal-section.edit-mode .profile-display { display: none; }
 
 /* Fix button alignment in password form */
 .modal-section .icon-btn.password-btn {
