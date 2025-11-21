@@ -270,7 +270,8 @@ const SettingsPanel = (() => {
         return;
       }
 
-      data.transactions.forEach(t => {
+      // Process transactions with name lookups
+      for (const t of data.transactions) {
         const row = document.createElement('div');
         row.style.display = 'flex';
         row.style.justifyContent = 'space-between';
@@ -278,23 +279,44 @@ const SettingsPanel = (() => {
         row.style.padding = '8px 0';
         row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
 
-        const info = document.createElement('div');
+        const uid = t.userid || t.UserId;
+        const bid = t.bookid || t.BookId;
         const date = t.transactiondate || t.TransactionDate;
         const dateStr = date ? new Date(date).toLocaleString() : '';
         const reserved = t.reservedindicator ?? t.ReservedIndicator;
+        const action = reserved ? 'Reserved' : 'Booked';
 
+        // Fetch user and book names
+        const [uname, bname] = await Promise.all([
+          (async () => {
+            try {
+              const r = await fetch(`${API_BASE}/api/users?user_id=${encodeURIComponent(uid)}`);
+              const d = await r.json();
+              return (d.user && (d.user.fullname || d.user.username || d.user.Username)) || uid;
+            } catch { return uid; }
+          })(),
+          (async () => {
+            try {
+              const r = await fetch(`${API_BASE}/api/books?book_id=${encodeURIComponent(bid)}`);
+              const d = await r.json();
+              return (d.book && (d.book.name || d.book.Name)) || bid;
+            } catch { return bid; }
+          })()
+        ]);
+
+        const info = document.createElement('div');
         info.innerHTML =
           `<div style="font-weight:600">Transaction #${t.transactionid || t.TransactionId}</div>
           <div style="font-size:12px;color:var(--muted)">
-            User: ${t.userid || t.UserId} — 
-            Book: ${t.bookid || t.BookId} — 
-            ${dateStr} — 
-            ${reserved ? 'Reserved' : 'Returned'}
+            User: ${uname} — 
+            Action: ${action} — 
+            Book: ${bname} — 
+            ${dateStr}
           </div>`;
 
         row.appendChild(info);
         listHtml.appendChild(row);
-      });
+      }
 
       container.innerHTML = '';
       container.appendChild(listHtml);
