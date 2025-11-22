@@ -1,11 +1,7 @@
 // ========================
 // SETTINGS PANEL MODULE
 // ========================
-// Handles all settings panel functionality including:
-// - Pending requests management
-// - Transaction history
-// - Tab switching
-// - Auto-refresh and manual refresh
+// Handles all settings panel functionality
 
 const SettingsPanel = (() => {
   const API_BASE = localStorage.getItem('API_BASE') || 'https://library-backend-excpspbhaq-uc.a.run.app';
@@ -21,19 +17,16 @@ const SettingsPanel = (() => {
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const refreshTransactionsBtn = document.getElementById('refreshTransactionsBtn');
 
-    // Open settings panel
     if (settingsBtn) {
       settingsBtn.addEventListener('click', () => {
         viewManager.navigateTo('settings');
 
-        // Default tab load
         const container = document.getElementById('manage-requests');
         container.innerHTML =
           '<div style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-weight:700;">Pending Returns</div><button id="refreshRequestsBtn" class="save-btn" style="padding:6px 12px;font-size:13px;"><i class="fa-solid fa-rotate-right"></i> Refresh</button></div><div id="pendingList"></div></div>';
         pendingInitialized = false;
         lastPendingKey = '';
 
-        // Attach refresh button handler
         const refreshBtn = document.getElementById('refreshRequestsBtn');
         if (refreshBtn) {
           refreshBtn.addEventListener('click', loadPendingRequests);
@@ -41,19 +34,16 @@ const SettingsPanel = (() => {
       });
     }
 
-    // Tab switching + data loading
     settingsTabBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
         const tabId = btn.dataset.tab;
         const settingsTabContents = document.querySelectorAll('.settings-tab-content');
 
-        // Switch UI
         settingsTabBtns.forEach((b) => b.classList.remove('active'));
         settingsTabContents.forEach((content) => content.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(tabId).classList.add('active');
 
-        // Load tab-specific data
         if (tabId === 'manage-requests') {
           const container = document.getElementById('manage-requests');
           container.innerHTML =
@@ -63,7 +53,6 @@ const SettingsPanel = (() => {
 
           loadPendingRequests();
           
-          // Attach refresh button handler
           const refreshBtn = document.getElementById('refreshRequestsBtn');
           if (refreshBtn) {
             refreshBtn.addEventListener('click', loadPendingRequests);
@@ -72,12 +61,10 @@ const SettingsPanel = (() => {
       });
     });
 
-    // Refresh transactions button
     if (refreshTransactionsBtn) {
       refreshTransactionsBtn.addEventListener('click', loadTransactionHistory);
     }
 
-    // Cross-tab synchronization
     window.addEventListener('storage', (ev) => {
       if (ev.key === 'catalog-event' && viewManager.currentView === 'settings') {
         loadPendingRequests();
@@ -85,10 +72,8 @@ const SettingsPanel = (() => {
       }
     });
 
-    // Poll pending requests only (transactions now use manual refresh button)
     setInterval(() => {
       try {
-        // Only auto-refresh if on manage-requests tab AND settings panel is visible
         if (viewManager.currentView === 'settings') {
           const manageRequestsTab = document.querySelector('.settings-tab-btn[data-tab="manage-requests"]');
           if (manageRequestsTab && manageRequestsTab.classList.contains('active')) {
@@ -99,13 +84,11 @@ const SettingsPanel = (() => {
     }, 5000);
   }
 
-  // Load pending return requests
   async function loadPendingRequests() {
     try {
       const listEl = document.getElementById('pendingList') 
                     || document.getElementById('manage-requests');
 
-      // If element does NOT exist, stop silently.
       if (!listEl) return;
 
       if (!pendingInitialized) {
@@ -187,12 +170,10 @@ const SettingsPanel = (() => {
               btn.disabled = true;
               btn.textContent = 'Approved';
               
-              // CRITICAL: Reload books data in dashboard
               if (typeof loadBooks === 'function') {
                 await loadBooks();
               }
               
-              // CRITICAL: Trigger reload in bookdetails iframe if it's open
               const iframesInPage = document.querySelectorAll('iframe');
               iframesInPage.forEach(iframe => {
                 try {
@@ -221,7 +202,6 @@ const SettingsPanel = (() => {
         listHtml.appendChild(row);
       }
 
-      // --- Off-screen render for smooth update ---
       const temp = document.createElement('div');
       temp.style.display = 'none';
       document.body.appendChild(temp);
@@ -352,7 +332,6 @@ const SettingsPanel = (() => {
     }
   }
 
-  // Public API
   return {
     init,
     loadPendingRequests,

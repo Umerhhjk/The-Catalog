@@ -95,7 +95,6 @@ const ProfileManager = (() => {
                 return;
             }
 
-            // Reload current user from DB
             await loadUserProfile(userId);
 
             exitEditMode();

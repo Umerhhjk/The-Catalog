@@ -13,7 +13,6 @@ function loadBookData() {
   author = data.Author;
   publisher = data.Publisher;
 
-  // Populate UI
   document.getElementById("name").value = book.Name;
   document.getElementById("author").value = author.AuthorName;
   document.getElementById("publisher").value = publisher.PublisherName;
@@ -66,7 +65,6 @@ const updated = {
   imglink: book.ImgLink
 };
 
-// Only include publishdate if user changed it
 if (currentDateInput && currentDateInput !== originalPublishDate) {
   updated.publishdate = currentDateInput;
 }

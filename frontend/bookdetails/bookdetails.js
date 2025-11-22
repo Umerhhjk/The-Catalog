@@ -1,15 +1,11 @@
 const API_BASE = "https://library-backend-excpspbhaq-uc.a.run.app";
 
-// ====================================================================
-// GLOBAL FLAGS - Must be declared before any function uses them
-// ====================================================================
+// GLOBAL FLAGS
 let isProcessing = false;  // Flag to prevent multiple rapid clicks
 let bookingListenerAttached = false;  // Track if booking event listener is attached
 let wishlistListenerAttached = false;  // Track if wishlist event listener is attached
 
-// -----------------------------
 // Utilities
-// -----------------------------
 function formatPublishDate(raw) {
   if (!raw) return "";
 
@@ -20,7 +16,6 @@ function formatPublishDate(raw) {
     const year = d.getUTCFullYear();
     return `${day} ${month} ${year}`;
   } catch (e) {
-    // fallback for weird formats
     try {
       return raw.split(" ").slice(1, 4).join(" ");
     } catch (err) {
@@ -34,10 +29,10 @@ function setInitialUserRating(rating) {
   stars.forEach((star, index) => {
     if (index < rating) {
       star.classList.add('active');
-      star.textContent = '★';   // filled star
+      star.textContent = '★';
     } else {
       star.classList.remove('active');
-      star.textContent = '☆';   // hollow star
+      star.textContent = '☆';
     }
   });
 }
@@ -64,7 +59,6 @@ function showToast(title, message) {
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
-  // attempt to parse JSON safely
   let data;
   try {
     data = await res.json();
@@ -76,11 +70,8 @@ async function fetchJson(url, options = {}) {
   return data;
 }
 
-// -----------------------------
 // Loader + image preload helpers
-// -----------------------------
 function getLoadingOverlay() {
-  // user confirmed overlay exists in HTML; return it if present
   const ov = document.getElementById("loading-overlay");
   return ov || null;
 }
@@ -97,10 +88,8 @@ function hideLoadingOverlay() {
   ov.style.display = "none";
 }
 
-// Preload image and set src only on success to avoid flicker/broken image
 function setCoverImageSafely(imgElement, url, placeholder = "../placeholder.png") {
   if (!imgElement) return;
-  // show placeholder immediately so previous-window image isn't visible
   try {
     imgElement.src = placeholder;
   } catch (e) { /* ignore */ }
@@ -121,18 +110,14 @@ function setCoverImageSafely(imgElement, url, placeholder = "../placeholder.png"
   pre.src = url;
 }
 
-// -----------------------------
 // State
-// -----------------------------
 let Book = {};
 let Author = {};
 let Publisher = {};
 let userData = { booked: 0, pendingreturn: 0, personalRating: 0, wishlisted: 0 };
 let previousBookingState = { booked: 0, pendingreturn: 0 };  // Track previous state for return detection
 
-// -----------------------------
 // Main data loader (revised)
-// -----------------------------
 async function loadRealBookData() {
   showLoadingOverlay();
 
@@ -144,7 +129,6 @@ async function loadRealBookData() {
       return;
     }
 
-    // Ensure placeholder shows immediately (avoid showing previous page cover)
     const imgEl = document.getElementById("book-img");
     if (imgEl) imgEl.src = "../placeholder.png";
 
@@ -180,7 +164,6 @@ async function loadRealBookData() {
       UsersRated: 0,
     };
  
-    // FETCH FULL BOOK DETAILS
     const fullBookRes = await fetchJson(`${API_BASE}/api/books?book_id=${bookId}`);
 
     if (fullBookRes.success && fullBookRes.book) {
@@ -216,7 +199,6 @@ async function loadRealBookData() {
       }
     }
 
-    // Ratings summary
     try {
       const ratingRes = await fetchJson(`${API_BASE}/api/reviews/rating/${bookId}`);
       Book.Rating = ratingRes.average_rating ? Number(ratingRes.average_rating) : 0;
@@ -226,9 +208,6 @@ async function loadRealBookData() {
       Book.UsersRated = 0;
     }
 
-
-
-    // Current user data (rating, booking status, wishlist status)
   const currentUser = JSON.parse(
   sessionStorage.getItem("selectedUser") ||
   localStorage.getItem("selectedUser") ||
@@ -238,7 +217,6 @@ async function loadRealBookData() {
 if (currentUser) {
   const userId = currentUser.userid;
   
-  // FETCH PERSONAL RATING
   try {
     const res = await fetch(`${API_BASE}/api/reviews?book_id=${bookId}&user_id=${userId}`);
 
@@ -250,7 +228,6 @@ if (currentUser) {
       const data = await res.json();
       console.log("REVIEWS API RAW RESPONSE:", data);
 
-      // FIXED: backend returns { success: true, review: {...} }
       if (data?.success && data.review && typeof data.review.rating === "number") {
         console.log("USER RATING FOUND:", data.review.rating);
         userData.personalRating = Number(data.review.rating);
@@ -268,7 +245,6 @@ if (currentUser) {
     userData.personalRating = 0;
   }
 
-  // FETCH BOOKING STATUS FOR THIS BOOK
   try {
     const bookingRes = await fetchJson(`${API_BASE}/api/bookings?user_id=${userId}&book_id=${bookId}`);
     
@@ -282,7 +258,6 @@ if (currentUser) {
       if (booking) {
         console.log("BOOKING FOUND FOR THIS BOOK:", booking);
         
-        // Use the correct field names from actual API response
         const isCurrentlyBooked = booking.currentlybookedindicator || false;
         const isPendingReturn = booking.pendingreturnindicator || false;
         
@@ -318,7 +293,6 @@ if (currentUser) {
     userData.pendingreturn = 0;
   }
   
-  // Update previous state for next comparison
   previousBookingState = { booked: userData.booked, pendingreturn: userData.pendingreturn };
 
   // FETCH WISHLIST STATUS FOR THIS BOOK
@@ -343,13 +317,8 @@ if (currentUser) {
   }
 }
 
-
-    // INITIALIZE UI AFTER DATA READY
-    // ⭐ Apply user rating before UI initializes
-
     initDOM();
     
-    // Start auto-reload if there's a pending return
     if (userData.pendingreturn === 1) {
       startAutoReload();
     } else {
@@ -363,11 +332,8 @@ if (currentUser) {
 
 }
 
-// -----------------------------
 // UI initialization
-// -----------------------------
 function initDOM() {
-  // ----------------- POPULATE DETAILS -----------------
   function populateDetails() {
     const imgEl = document.getElementById("book-img");
     setCoverImageSafely(imgEl, Book.ImgLink, "../placeholder.png");
@@ -394,9 +360,6 @@ function initDOM() {
 
   populateDetails();
 
-  // ====================================================================
-  // BUTTONS & STATES
-  // ====================================================================
   const bookButton = document.getElementById("book-button");
   const wishlistButton = document.getElementById("wishlist-button");
 
@@ -430,11 +393,9 @@ function initDOM() {
 
   updateButtonState();
 
-  // Initialize wishlist UI state immediately
   function updateWishlistUI() {
     if (!wishlistButton) return;
     
-    // Disable wishlist if book is currently booked
     if (userData.booked === 1) {
       wishlistButton.disabled = true;
       wishlistButton.title = "Cannot wishlist a booked book. Return the book first.";
@@ -449,14 +410,10 @@ function initDOM() {
 
   updateWishlistUI();
 
-  // Attach event listeners (only once)
   attachBookingListener();
   attachWishlistListener();
 
-// ====================================================================
 // BOOKING LOGIC
-// ====================================================================
-
 function attachBookingListener() {
   if (bookingListenerAttached) return;  // Don't attach twice
   
@@ -465,7 +422,6 @@ function attachBookingListener() {
   if (!bookButton) return;
   
   bookButton.addEventListener("click", () => {
-    // Prevent multiple rapid clicks
     if (isProcessing) {
       console.warn("Request already in progress");
       return;
@@ -479,7 +435,6 @@ function attachBookingListener() {
     const isReturnRequest =
       userData.booked === 1 && userData.pendingreturn === 0;
 
-    // BOOK
     if (isBooking) {
       isProcessing = true;
       bookButton.disabled = true;
@@ -512,13 +467,11 @@ function attachBookingListener() {
             }
           );
 
-          // Update local state IMMEDIATELY for UI feedback
           userData.booked = 1;
           userData.pendingreturn = 0;
           userData.bookingId = bookingRes.booking_id;
           Book.CopiesAvailable = (Book.CopiesAvailable ?? 1) - 1;
 
-          // Update the book copies in the database
           try {
             const updateRes = await fetchJson(`${API_BASE}/api/books/${bookId}`, {
               method: "PUT",
@@ -527,18 +480,15 @@ function attachBookingListener() {
             });
             console.log("Book copies updated in DB - Response:", updateRes);
             
-            // Re-fetch book data to ensure we have the correct copies from database
             await loadRealBookData();
           } catch (copyUpdateErr) {
             console.error("Failed to update book copies in DB:", copyUpdateErr);
-            // Still reload to get correct state from DB even if update failed
             await loadRealBookData();
           }
           
           showToast("Booked", "Successfully booked");
           
           localStorage.setItem('booking-status-changed', Date.now().toString());
-          // Notify parent that booking status changed (for cross-tab sync)
           window.parent.postMessage({ action: "booking-changed" }, "*");
         } catch (e) {
           showToast("Error", "Booking failed");
@@ -550,7 +500,6 @@ function attachBookingListener() {
       return;
     }
 
-    // RETURN REQUEST
     if (isReturnRequest) {
       isProcessing = true;
       bookButton.disabled = true;
@@ -569,14 +518,12 @@ function attachBookingListener() {
             }
           );
 
-          // Update local state IMMEDIATELY for UI feedback
           userData.pendingreturn = 1;
           updateButtonState();
           updateWishlistUI();
           showToast("Return Request", "Sent to admin");
           
           localStorage.setItem('booking-status-changed', Date.now().toString());
-          // Notify parent that booking status changed (for cross-tab sync)
           window.parent.postMessage({ action: "booking-changed" }, "*");
         } catch (e) {
           showToast("Error", "Return failed");
@@ -592,14 +539,13 @@ function attachBookingListener() {
 }
 
 function attachWishlistListener() {
-  if (wishlistListenerAttached) return;  // Don't attach twice
+  if (wishlistListenerAttached) return;
   
   const wishlistButton = document.getElementById("wishlist-button");
   
   if (!wishlistButton) return;
   
   wishlistButton.addEventListener("click", () => {
-    // Prevent action if book is booked
     if (userData.booked === 1) {
       showToast("Cannot Wishlist", "Return the book first to add to wishlist");
       return;
@@ -647,9 +593,7 @@ function attachWishlistListener() {
   wishlistListenerAttached = true;
 }
 
-  // ====================================================================
 // STAR RATING
-// ====================================================================
 const stars = document.querySelectorAll(".star");
 let persistentRating = userData.personalRating || 0;
 
@@ -661,7 +605,7 @@ function updateStars() {
   });
 }
 
-updateStars(); // highlight user rating immediately
+updateStars();
 
 stars.forEach((star) => {
   const val = parseInt(star.dataset.value, 10);
@@ -712,9 +656,7 @@ stars.forEach((star) => {
   });
 });
 
-  // ====================================================================
   // DESCRIPTION TOGGLE
-  // ====================================================================
   const descText = document.getElementById("description-text");
   const toggleBtn = document.getElementById("toggle-description");
 
@@ -732,9 +674,7 @@ stars.forEach((star) => {
     });
   }
 
-  // ====================================================================
   // BACK BUTTON
-  // ====================================================================
   const backBtn = document.getElementById("back-to-dashboard");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
@@ -742,9 +682,7 @@ stars.forEach((star) => {
     });
   }
 
-  // ====================================================================
   // ADMIN BUTTON
-  // ====================================================================
   const currentUserLocal = JSON.parse(localStorage.getItem("selectedUser") || "null");
   const AdminIndicator = currentUserLocal?.adminindicator ? 1 : 0;
   const adminButton = document.getElementById("admin-button");
@@ -762,7 +700,6 @@ stars.forEach((star) => {
     }
   }
 
-  // FINAL: highlight stars after everything is loaded (small delay to ensure DOM state)
   setTimeout(() => {
     const stars = document.querySelectorAll(".star");
     const rating = userData.personalRating || 0;
@@ -775,9 +712,6 @@ stars.forEach((star) => {
   }, 50);
 }
 
-// ====================================================================
-// MESSAGE LISTENER FOR RELOAD FROM PARENT
-// ====================================================================
 window.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'reload-book-data') {
     console.log("RECEIVED RELOAD MESSAGE - Reloading book data...");
@@ -787,7 +721,6 @@ window.addEventListener('message', (event) => {
   }
 });
 
-// Listen for storage events to reload when user data changes in other tabs
 window.addEventListener('storage', (event) => {
   if (event.key === 'booking-status-changed') {
     console.log("BOOKING STATUS CHANGED IN ANOTHER TAB - Reloading book data...");
@@ -795,21 +728,17 @@ window.addEventListener('storage', (event) => {
   }
 });
 
-// ====================================================================
-// AUTO-RELOAD FOR PENDING RETURNS (check every 30 seconds)
-// ====================================================================
 let autoReloadInterval = null;
 
 function startAutoReload() {
   if (autoReloadInterval) return; // Already running
   
   autoReloadInterval = setInterval(() => {
-    // Only reload if there's a pending return
     if (userData.pendingreturn === 1) {
       console.log("Auto-checking for admin approval of return...");
       loadRealBookData();
     }
-  }, 30000); // Check every 30 seconds
+  }, 30000);
   
   console.log("Auto-reload started for pending returns");
 }
@@ -822,10 +751,5 @@ function stopAutoReload() {
   }
 }
 
-// After loadRealBookData completes, start auto-reload if there's a pending return
-// This will be added to the end of loadRealBookData
-
-// -----------------------------
 // Start loading
-// -----------------------------
 loadRealBookData();

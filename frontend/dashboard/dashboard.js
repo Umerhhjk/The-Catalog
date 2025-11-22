@@ -39,7 +39,6 @@ async function loadBooks() {
   }
 }
 
-// NEW FUNCTION: Search books by name
 async function searchBooks(query) {
   try {
     const res = await fetch(`https://library-backend-excpspbhaq-uc.a.run.app/api/books/search?name=${encodeURIComponent(query)}`);
@@ -61,30 +60,24 @@ async function searchBooks(query) {
   }
 }
 
-// NEW FUNCTION: Render search results
 function renderSearchResults(query, searchResults) {
   const main = document.getElementById('mainArea');
 
-  // Remove all generated panels
   if (main) {
     Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
   }
 
-  // Hide continue panel
   const continuePanel = document.getElementById('continuePanel');
   if (continuePanel) {
     continuePanel.style.display = 'none';
   }
 
-  // Hide settings panel
   if (typeof viewManager !== "undefined") {
     try { viewManager._hide('settings'); } catch (e) {}
   }
 
-  // Remove active state from sidebar items
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
 
-  // Create search results panel
   const panel = document.createElement('section');
   panel.className = 'panel category-panel';
   panel.style.marginBottom = '14px';
@@ -108,19 +101,16 @@ function renderSearchResults(query, searchResults) {
 
   main.appendChild(panel);
 
-  // Update viewManager
   if (typeof viewManager !== "undefined") {
     viewManager.currentView = "search";
     viewManager.previousView = "dashboard";
   }
 }
 
-// NEW FUNCTION: Render dynamic sidebar
 function renderSidebar() {
   const sidecard = document.querySelector('.sidebar .sidecard');
   if (!sidecard) return;
 
-  // Count books per category
   const categoryCounts = {};
   books.forEach(book => {
     const cat = book.category || 'Uncategorized';
@@ -129,7 +119,6 @@ function renderSidebar() {
 
   const totalBooks = books.length;
 
-  // Build sidebar HTML
   let sidebarHTML = `
     <nav class="nav">
       <a class="nav-item" id="allBooksItem" href="#" data-category="all">
@@ -138,7 +127,6 @@ function renderSidebar() {
       </a>
   `;
 
-  // Add each category
   categories.forEach(cat => {
     const count = categoryCounts[cat] || 0;
     sidebarHTML += `
@@ -153,32 +141,25 @@ function renderSidebar() {
   
   sidecard.innerHTML = sidebarHTML;
 
-  // Attach click handlers
   attachSidebarHandlers();
 }
 
-// NEW FUNCTION: Attach click handlers to sidebar items
 function attachSidebarHandlers() {
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       
-      // Clear search input when navigating via sidebar
       const searchInput = document.querySelector('.search input');
       if (searchInput) searchInput.value = '';
       
-      // Remove active class from all items
       document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      // Add active to clicked item
       item.classList.add('active');
       
       const category = item.getAttribute('data-category');
       
       if (category === 'all') {
-        // Show all categories (full dashboard)
         renderDashboard();
       } else {
-        // Show single category
         renderSingleCategory(category);
       }
     });
@@ -230,31 +211,23 @@ function renderDashboard() {
   const main = document.getElementById('mainArea');
   const continuePanel = document.getElementById('continuePanel');
 
-  // Remove only dashboard-generated panels (category panels and details panel)
-  // Preserve persistent panels like the settings panel so their tab containers
-  // (e.g. `#manage-requests`) remain present when opened.
   if (main) {
     Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
   }
 
-  // Set All Books as active in sidebar
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   const allBooksItem = document.getElementById('allBooksItem');
   if (allBooksItem) allBooksItem.classList.add('active');
 
-  // If no books, show continue panel; otherwise show category panels
   if (books.length === 0) {
-    // Show continue panel for no books available
     if (continuePanel) {
       continuePanel.style.display = 'block';
     }
   } else {
-    // Hide continue panel when books exist
     if (continuePanel) {
       continuePanel.style.display = 'none';
     }
     
-    // Build fresh category panels
     categories.forEach(category => {
       const panel = document.createElement('section');
       panel.className = 'panel category-panel';
@@ -278,7 +251,6 @@ function renderDashboard() {
     });
   }
 
-  // Tell viewManager we switched back to dashboard - but DON'T let it override visibility
   if (typeof viewManager !== "undefined") {
     viewManager.currentView = "dashboard";
     viewManager.previousView = null;
@@ -291,18 +263,15 @@ function renderDashboard() {
 function renderSingleCategory(categoryName) {
   const main = document.getElementById('mainArea');
 
-  // Remove all generated panels (category panels and details)
   if (main) {
     Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
   }
 
-  // Hide dashboard panels (continue, recent) and settings
   if (typeof viewManager !== "undefined") {
     try { viewManager._hide('dashboard'); } catch (e) {}
     try { viewManager._hide('settings'); } catch (e) {}
   }
 
-  // Create single category panel
   const panel = document.createElement('section');
   panel.className = 'panel category-panel';
   panel.style.marginBottom = '14px';
@@ -336,35 +305,28 @@ function renderSingleCategory(categoryName) {
 function renderBookDetails(book) {
   const main = document.getElementById('mainArea');
 
-  // FIX: Create a history entry so the Back button works
   history.pushState({ id: book.id }, "", `?id=${encodeURIComponent(book.id)}`);
 
-  // Remove only dashboard-generated panels (category panels and existing details)
-  // Preserve persistent UI like the settings panel so tabs remain available.
   if (main) {
     Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
   }
 
-  // Hide continue panel and other dashboard panels
   const continuePanel = document.getElementById('continuePanel');
   if (continuePanel) {
     continuePanel.style.display = 'none';
   }
 
-  // Store book for bookdetails.html
   try { 
     localStorage.setItem('selectedBook', JSON.stringify(book)); 
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     localStorage.setItem('selectedUser', JSON.stringify(currentUser));
   } catch (e) {}
 
-  // Create panel
   const details = document.createElement('div');
   details.id = 'detailsPanel';
   details.style.width = '100%';
   details.style.minHeight = '400px';
 
-  // Create iframe
   const iframe = document.createElement('iframe');
   iframe.title = 'Book Details';
   iframe.src = `../bookdetails/bookdetails.html?id=${encodeURIComponent(book.id)}`;
@@ -376,7 +338,6 @@ function renderBookDetails(book) {
   details.appendChild(iframe);
   main.appendChild(details);
 
-  // Tell viewManager we switched
   if (typeof viewManager !== 'undefined') {
     viewManager.navigateTo('bookdetails');
   }
@@ -388,7 +349,6 @@ function navigateTo(search) {
   const id = params.get('id');
 
   if (id) {
-    // classic navigation
     const book = books.find(b => b.id === id)
              || JSON.parse(localStorage.getItem('selectedBook') || 'null')
              || { id, title: id.replace(/-/g, ' ') };
@@ -397,7 +357,6 @@ function navigateTo(search) {
     return;
   }
 
-  // dashboard view
   history.pushState({ id: null }, '', `${location.pathname}`);
   renderDashboard();
 }
@@ -422,12 +381,10 @@ if (stored) {
     localStorage.setItem('currentUserId', user.userid || user.UserId);
   }
 
-  // Set profile info
   if (uEl && user.username) uEl.textContent = user.username;
   if (eEl && user.email) eEl.textContent = user.email;
   if (nEl && user.fullName) nEl.textContent = user.fullName;
 
-  // Show/hide buttons based on adminindicator
   if (user.adminindicator) {
     addBookBtn.style.display = '';
     settingsBtn.style.display = '';
@@ -440,7 +397,6 @@ if (stored) {
     logoutBtn.style.display = '';
   }
 
-  // Attach logout AFTER visibility decisions
    const logoutButton = document.getElementById('logoutBtn');
    if (logoutButton) {
      logoutButton.onclick = () => {
@@ -451,10 +407,8 @@ if (stored) {
     } else {  }
   } catch (e) {}
 
-  // NEW: Setup search functionality
   const searchInput = document.querySelector('.search input');
   if (searchInput) {
-    // Handle Enter key press
     searchInput.addEventListener('keypress', async (e) => {
       if (e.key === 'Enter') {
         const query = searchInput.value.trim();
@@ -463,13 +417,11 @@ if (stored) {
           const searchResults = await searchBooks(query);
           renderSearchResults(query, searchResults);
         } else {
-          // If empty, show dashboard
           renderDashboard();
         }
       }
     });
 
-    // Optional: Clear search on Escape key
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         searchInput.value = '';
@@ -569,7 +521,6 @@ if (stored) {
         if (recentPanel) recentPanel.style.display = 'none';
         if (detailsPanel) detailsPanel.style.display = 'none';
         
-        // Also hide category panels
         if (main) {
           Array.from(main.querySelectorAll('.category-panel')).forEach(n => n.style.display = 'none');
         }
@@ -603,16 +554,13 @@ if (stored) {
       this.previousView = null;
       this.currentView = target;
       
-      // Render appropriate view based on target
       if (target === 'dashboard') {
         renderDashboard();
         this._show('dashboard');
       } else if (target === 'bookdetails') {
-        // Going back to book details - reload the data in the iframe
         const detailsPanel = document.getElementById('detailsPanel');
         if (detailsPanel) {
           detailsPanel.style.display = 'block';
-          // Send message to iframe to reload book data
           const iframe = detailsPanel.querySelector('iframe');
           if (iframe && iframe.contentWindow) {
             iframe.contentWindow.postMessage({ action: 'reload-book-data' }, '*');
@@ -629,21 +577,18 @@ if (stored) {
   const settingsBtn = document.getElementById('settingsBtn');
   const backBtn = document.getElementById('backBtn');
 
-  // Settings button
   if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
       viewManager.navigateTo('settings');
     });
   }
 
-  // Back button
   if (backBtn) {
     backBtn.addEventListener('click', () => {
       viewManager.goBack();
     });
   }
 
-  // Cross-tab synchronization
   window.addEventListener('storage', (ev) => {
     if (ev.key === 'catalog-event') {
       // Let modules handle their own updates
@@ -654,7 +599,6 @@ if (stored) {
     }
   });
 
-  // Initialize settings panel and profile manager
   if (SettingsPanel && typeof SettingsPanel.init === 'function') {
     SettingsPanel.init(viewManager);
   }
@@ -672,7 +616,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadBooks()
   ]);
 
-  // Render dynamic sidebar after loading data
   renderSidebar();
 
   mount();
@@ -683,7 +626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // UPLOAD BUTTON OVERLAY
 // =====================
 
-// 1. Create overlay element (hidden by default)
 const uploadOverlay = document.createElement('div');
 uploadOverlay.id = 'uploadOverlay';
 uploadOverlay.style.position = 'fixed';
@@ -718,7 +660,6 @@ uploaderFrame.style.width = '100%';
 uploaderFrame.style.height = '100%';
 uploaderFrame.style.border = 'none';
 
-// 3. Close overlay on background click
 uploadOverlay.addEventListener('click', (e) => {
   if (e.target === uploadOverlay) {
     uploadOverlay.style.opacity = '0';
@@ -728,7 +669,6 @@ uploadOverlay.addEventListener('click', (e) => {
   }
 });
 
-// 4. Add iframe inside overlay
 uploaderContainer.appendChild(uploaderFrame);
 uploadOverlay.appendChild(uploaderContainer);
 document.body.appendChild(uploadOverlay);
@@ -751,7 +691,6 @@ function closeUploadOverlay() {
   setTimeout(() => { uploadOverlay.style.display = 'none'; }, 220);
 }
 
-// 5. Trigger → Show overlay
 document.getElementById("addBookBtn").addEventListener("click", () => {
   openUploadOverlay();
 });
@@ -760,7 +699,6 @@ document.getElementById("addBookBtn").addEventListener("click", () => {
 // Toast Function
 // ========================
 function showToast(message) {
-  // Create container if not present
   let container = document.getElementById('toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -773,20 +711,16 @@ function showToast(message) {
     document.body.appendChild(container);
   }
 
-  // Create toast element
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.innerHTML = `<strong>${message}</strong>`;
   toast.style.zIndex = '100002';
   toast.style.pointerEvents = 'auto';
 
-  // Append toast to container
   container.appendChild(toast);
 
-  // Force reflow so animation triggers
   void toast.offsetWidth;
 
-  // Remove toast after 4s
   setTimeout(() => {
     toast.remove();
   }, 4000);
@@ -821,9 +755,7 @@ window.addEventListener('message', async (event) => {
   }
 
   if (action === 'booking-changed') {
-    // Reload books when booking status changes
     await loadBooks();
-    // Update sidebar counts
     renderSidebar();
   }
 
@@ -833,16 +765,12 @@ if (action === 'close-bookdetails') {
       Array.from(main.querySelectorAll('.category-panel, #detailsPanel')).forEach(n => n.remove());
     }
 
-    // Reload books and categories from API
     await loadBooks();
     await loadCategories();
 
-    // Re-render sidebar with updated counts
     renderSidebar();
-    // Render updated dashboard
     renderDashboard();
 
-    // Fix URL
     history.replaceState({ id: null }, "", location.pathname);
   }
 });

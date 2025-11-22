@@ -26,7 +26,6 @@ body {
     overflow: hidden;
 }
 
-/* Add subtle overlay for more depth */
 .login-container::before {
     content: '';
     position: absolute;
@@ -39,7 +38,6 @@ body {
     pointer-events: none;
 }
 
-/* Login Card */
 .login-card {
     background: linear-gradient(145deg, #1A1A1A 0%, #2A2A2A 100%);
     border-radius: 24px;
@@ -55,7 +53,6 @@ body {
     backdrop-filter: blur(10px);
 }
 
-/* Signup form specific adjustments */
 .login-card.signup-form {
     max-width: 500px;
     padding: 30px;
@@ -64,12 +61,10 @@ body {
     overflow-y: auto;
 }
 
-/* Remove top margin for signup welcome section */
 .signup-form .welcome-section {
     margin-bottom: 25px;
 }
 
-/* Compact form layout for signup */
 .signup-form .form-group {
     margin-bottom: 18px;
 }
@@ -84,14 +79,12 @@ body {
     font-size: 0.95rem;
 }
 
-/* Ensure password fields in signup have proper spacing */
 .signup-form .password-input-group .form-control {
     padding-right: 50px;
     padding-left: 14px;
     font-size: 0.95rem;
 }
 
-/* Two-column layout for some fields */
 .signup-form .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -103,7 +96,6 @@ body {
     margin-bottom: 0;
 }
 
-/* Responsive adjustments */
 @media (max-width: 480px) {
     .signup-form .form-row {
         grid-template-columns: 1fr;
@@ -120,7 +112,6 @@ body {
     }
 }
 
-/* Add subtle inner glow */
 .login-card::before {
     content: '';
     position: absolute;
@@ -133,7 +124,6 @@ body {
     pointer-events: none;
 }
 
-/* Logo Section */
 .logo-section {
     text-align: center;
     margin-bottom: 30px;
@@ -165,7 +155,6 @@ body {
     letter-spacing: -0.5px;
 }
 
-/* Welcome Section */
 .welcome-section {
     text-align: center;
     margin-bottom: 30px;
@@ -187,7 +176,6 @@ body {
     letter-spacing: 0.2px;
 }
 
-/* Form Styles */
 .login-form {
     margin-bottom: 20px;
 }
@@ -223,14 +211,12 @@ body {
     color: #FFFFFF;
 }
 
-/* Ensure text is always visible */
 .form-control input[type="text"],
 .form-control input[type="password"],
 .form-control input[type="email"] {
     color: #FFFFFF !important;
 }
 
-/* Additional styling for better text visibility */
 input[type="text"]:not(:placeholder-shown),
 input[type="password"]:not(:placeholder-shown),
 input[type="email"]:not(:placeholder-shown) {
@@ -247,14 +233,13 @@ input[type="email"]:not(:placeholder-shown) {
     color: #CCCCCC;
 }
 
-/* Password Input Group */
 .password-input-group {
     position: relative;
 }
 
 .password-input-group .form-control {
-    padding-right: 50px; /* Make more space for the eye icon */
-    padding-left: 16px; /* Ensure left padding is consistent */
+    padding-right: 50px;
+    padding-left: 16px;
 }
 
 .password-toggle {
@@ -275,7 +260,6 @@ input[type="email"]:not(:placeholder-shown) {
     color: #4CAF50;
 }
 
-/* Password Strength Indicator */
 .password-strength {
     margin-top: 8px;
     font-size: 0.85rem;
@@ -334,7 +318,6 @@ input[type="email"]:not(:placeholder-shown) {
     font-size: 0.7rem;
 }
 
-/* Login Button */
 .login-btn {
     background: #4CAF50;
     color: white;
@@ -362,7 +345,6 @@ input[type="email"]:not(:placeholder-shown) {
     transform: translateY(0);
 }
 
-/* Sign Up Section */
 .signup-section {
     text-align: center;
     margin-top: 20px;
@@ -386,7 +368,6 @@ input[type="email"]:not(:placeholder-shown) {
     text-decoration: underline;
 }
 
-/* Field Error Popup */
 .field-error-popup {
     position: absolute;
     top: -28px;
@@ -426,7 +407,6 @@ input[type="email"]:not(:placeholder-shown) {
     }
 }
 
-/* Field Success Popup */
 .field-success-popup {
     position: absolute;
     top: -28px;
@@ -455,12 +435,10 @@ input[type="email"]:not(:placeholder-shown) {
     border-top-color: #4CAF50;
 }
 
-/* Form group with relative positioning for popups */
 .form-group {
     position: relative;
 }
 
-/* Notification Popup - Top Right */
 .notification-popup {
     position: fixed;
     top: 20px;
@@ -477,13 +455,11 @@ input[type="email"]:not(:placeholder-shown) {
     gap: 10px;
 }
 
-/* Success notification */
 .notification-popup.success {
     background: linear-gradient(145deg, #4CAF50, #45A049);
     color: white;
 }
 
-/* Error notification */
 .notification-popup.error {
     background: linear-gradient(145deg, #F44336, #D32F2F);
     color: white;
@@ -534,7 +510,6 @@ input[type="email"]:not(:placeholder-shown) {
     }
 }
 
-/* Mobile responsive for notification popup */
 @media (max-width: 768px) {
     .notification-popup {
         right: 15px;
@@ -544,7 +519,6 @@ input[type="email"]:not(:placeholder-shown) {
     }
 }
 
-/* Responsive Design */
 @media (max-width: 480px) {
     .login-card {
         padding: 30px 20px;
@@ -560,7 +534,6 @@ input[type="email"]:not(:placeholder-shown) {
     }
 }
 
-/* Animation for form elements */
 .form-control, .login-btn {
     animation: fadeInUp 0.6s ease-out;
 }
@@ -576,7 +549,6 @@ input[type="email"]:not(:placeholder-shown) {
     }
 }
 
-/* Loading state for button */
 .login-btn.loading {
     background: #666666;
     cursor: not-allowed;

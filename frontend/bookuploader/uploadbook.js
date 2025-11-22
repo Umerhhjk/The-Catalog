@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  // Insert book (API automatically creates author/publisher if they do not exist)
+  // Insert book
   async function insertBook(bookData) {
     const payload = {
       Name: bookData.title,
@@ -29,7 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const raw = await res.text();
     console.log("RAW RESPONSE:", raw);
 
-    // Attempt to parse JSON only if possible
     try {
       return JSON.parse(raw);
     } catch {
@@ -37,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Update image preview
   const imgLinkInput = document.getElementById("imgLink");
   if (imgLinkInput) {
     imgLinkInput.addEventListener("input", (e) => {
@@ -48,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Cancel button
   const cancelBtnMain = document.getElementById("cancelBtn");
   if (cancelBtnMain) {
     cancelBtnMain.addEventListener("click", () => {
@@ -56,7 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Save / Upload button
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.addEventListener("click", async () => {
@@ -105,7 +101,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
   }
 
-  // Optional extra buttons
   const saveBtn = document.getElementById("saveBookBtn");
   if (saveBtn) {
     saveBtn.addEventListener("click", async () => {
@@ -125,4 +120,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-}); // END DOMContentLoaded
+});
